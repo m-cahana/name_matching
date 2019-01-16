@@ -28,13 +28,13 @@ library(openxlsx)
 # data read in
 #===========
 
-ekin <- read_excel(file.path(vdir, 'matches_EKIN.xlsx')) %>% 
-	select(name, match, keep, notes) %>% 
-	rename(keep_ekin = keep, notes_ekin = notes)
+ekin <- read_excel(file.path(vdir, 'double_zeroes_Ekin.xlsx')) %>% 
+	select(name, match, keep) %>% 
+	rename(keep_ekin = keep,)
 
-miriam <- read_excel(file.path(vdir, 'matches_MIRIAM.xlsx')) %>% 
-	select(name, match, keep, notes) %>% 
-	rename(keep_miriam = keep, notes_miriam = notes)
+miriam <- read_excel(file.path(vdir, 'double_zeroes_Miriam.xlsx')) %>% 
+	select(name, match, keep) %>% 
+	rename(keep_miriam = keep)
 
 wells <- readRDS(file.path(ddir, 'wells.Rds'))
 
@@ -56,7 +56,7 @@ conflicts <-
 	bind_rows(twos) %>% 
 	mutate(keep = NA, justification = NA) %>% 
 	select(name, match, keep, justification, 
-		keep_ekin, keep_miriam, notes_ekin, notes_miriam)
+		keep_ekin, keep_miriam)
 
 #===========
 # find total well count
