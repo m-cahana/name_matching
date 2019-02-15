@@ -36,12 +36,13 @@ load(file.path(rdir, 'nph_oper_addr-2017-04-30.Rdata'))
 #===========
 
 geocode <- function(address) {
-	print(address)
-	tryCatch({
-		google_output <- google_geocode(address = address, simplify = TRUE) 
-		coded_address <- google_output$results$formatted_address
-		return(coded_address[1])
-	}, error = function(c) return(NULL))
+	google_output <- google_geocode(address = address, simplify = TRUE) 
+	coded_address <- google_output$results$formatted_address %>% .[1]
+
+	if(is.null(coded_address)) {
+		return ('error')
+	}
+	return (coded_address)
 }
 
 alpha_order <- function(name, match, order) {
@@ -135,7 +136,3 @@ master <-
     mutate(method = 'geocode')
 
 write_csv(master, file.path(ddir, 'address_matches.csv'))
-
-
-
-
