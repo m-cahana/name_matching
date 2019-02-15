@@ -114,12 +114,15 @@ modeled <-
 	lapply(unique)
 
 master <- tibble(name = NA, match = NA)
-for (address_group in modeled) {
+for (a in 1:length(modeled)) {
+	address_group <- modeled[[a]]
+	address <- names(modeled[a])
+	# print(address)
 	for (i in 1:length(address_group)) {
 		for (j in 1:length(address_group)) {
 			if (i!=j) {
 				row <- tibble(name = address_group[i], match = address_group[j], 
-					method = 'geocode')
+					address = address, method = 'geocode')
 				master <- bind_rows(master, row)
 			}
 		}
@@ -131,9 +134,9 @@ master <-
 	rowwise() %>% 
 	mutate(a1 = alpha_order(name, match, 1)) %>% 
     mutate(a2 = alpha_order(name,  match, 2)) %>% 
-    select(a1, a2) %>% 
-    rename(name = a1, match = a2) %>% 
-    unique() %>% 
-    na.omit()
+    select(a1, a2, address, method) %>% 
+    rename(name = a1, match = a2) %>%  
+    na.omit() %>% 
+    distinct(name, match, .keep_all = T)
 
-write_csv(master, file.path(ddir, 'address_matches.csv'))
+write_csv(master, file.path(ddir, 'matches', 'address_matches.csv'))
