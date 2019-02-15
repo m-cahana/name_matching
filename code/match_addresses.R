@@ -1,12 +1,11 @@
 # Created by Michael Cahana in early February 2018
 # Matches operator names within our modeled data by checking whether 
 # their addresses match
-library(sf)
 library(tidyverse)
 library(fst)
-library(lubridate)
 library(stringi)
 library(googleway)
+library(tictoc)
 
 #===========
 # standard setup
@@ -37,11 +36,13 @@ load(file.path(rdir, 'nph_oper_addr-2017-04-30.Rdata'))
 #===========
 
 geocode <- function(address) {
-	google_output <- google_geocode(address = address, simplify = TRUE)
-	coded_address <- google_output$results$formatted_address
-	return(coded_address[1])
+	print(address)
+	tryCatch({
+		google_output <- google_geocode(address = address, simplify = TRUE) 
+		coded_address <- google_output$results$formatted_address
+		return(coded_address[1])
+	}, error = function(c) return(NULL))
 }
-
 
 alpha_order <- function(name, match, order) {
     vec <- c(name, match)
@@ -70,7 +71,8 @@ addresses_to_google <-
 	mutate(address = if_else(state_abrv!='', 
 		paste(address, state_abrv, sep=', '), address)) %>% 
 	mutate(address = if_else(zip!='', 
-		paste(address, zip, sep=', '), address)) %>%  
+		paste(address, zip, sep=', '), address)) %>%
+	mutate(address = str_replace_all(address, '%', '')) %>%  
 	select(curr_oper_id, address)
 
 modeled <- 
@@ -89,23 +91,10 @@ coded_addresses <-
 	modeled %>% 
 	filter(!is.na(address)) %>%
 	count(address) %>% 
-	arrange(desc(n)) %>% 
-	slice(1:100) %>% 
 	rowwise() %>% 
 	mutate(coded_address = geocode(address)) %>% 
 	select(-n)
 toc()
-
-# later: 
-# tic()
-# coded_addresses <- 
-# 	modeled %>% 
-# 	filter(!is.na(address)) %>%
-# 	count(address) %>% 
-# 	rowwise() %>% 
-# 	mutate(coded_address = geocode(address)) %>% 
-# 	select(-n)
-# toc()
 
 write_csv(coded_addresses, file.path(ddir, 'coded_addresses.csv'))
 
