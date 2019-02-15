@@ -106,7 +106,8 @@ write_csv(coded_addresses, file.path(ddir, 'coded_addresses.csv'))
 modeled <- 
 	modeled %>% 
 	left_join(coded_addresses, by='address') %>% 
-	filter(!is.na(coded_address))
+	filter(!is.na(coded_address)) %>% 
+	filter(coded_address!='error')
 
 modeled <- 
 	split(modeled$curr_oper_name, modeled$coded_address) %>% 
@@ -117,7 +118,8 @@ for (address_group in modeled) {
 	for (i in 1:length(address_group)) {
 		for (j in 1:length(address_group)) {
 			if (i!=j) {
-				row <- tibble(name = address_group[i], match = address_group[j])
+				row <- tibble(name = address_group[i], match = address_group[j], 
+					method = 'geocode')
 				master <- bind_rows(master, row)
 			}
 		}
@@ -132,7 +134,6 @@ master <-
     select(a1, a2) %>% 
     rename(name = a1, match = a2) %>% 
     unique() %>% 
-    na.omit() %>% 
-    mutate(method = 'geocode')
+    na.omit()
 
 write_csv(master, file.path(ddir, 'address_matches.csv'))
