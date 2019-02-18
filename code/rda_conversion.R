@@ -33,7 +33,7 @@ landtrac_tx <-
          effct_dt = if_else(is.na(effct_dt) & !is.na(inst_dt),
                             inst_dt, effct_dt))%>%
   st_buffer(0)
-save(landtrac_tx, file = file.path(rdir, "leases", "landtrac_tx.Rda"))
+saveRDS(landtrac_tx, file = file.path(rdir, "leases", "landtrac_tx.Rds"))
 
 
 # ==============================================================================
@@ -44,5 +44,5 @@ oper_addr <-
   read_delim(delim = ",", col_names = FALSE) %>%
   setNames(c("assoc_id", "addr_no", "addr_type", "addr_1", "addr_2", "city", 
   	"state_abrv", "zip", "country", "phone", "fax"))
-  
-save(oper_addr, file = file.path(rdir, "addresses", "oper_addr.Rda"))
+
+saveRDS(oper_addr, file = file.path(rdir, "addresses", "oper_addr.Rds"))
