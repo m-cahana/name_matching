@@ -3,11 +3,11 @@
 # To be called by master.csv
 
 #===========
-# inputs
-# df tibble
-# file_name string
-# already_coded_addresses list
+# inputs: 
 #===========
+# df tibble
+# already_coded_addresses list
+# output_file string
 
 #===========
 # standard setup
@@ -47,7 +47,7 @@ alpha_order <- function(name, match, order) {
     return(a1)
 }
 
-match_addresses <- function(df, output_file) {
+match_addresses <- function(df, already_coded_addresses, output_file) {
 	#===========
 	# geocode
 	#===========

@@ -3,6 +3,13 @@
 # To be called by master.csv
 
 #===========
+# inputs: 
+#===========
+# name_matches tibble
+# address_matches tibble
+# output_file string
+
+#===========
 # standard setup
 #===========
 root <- getwd()
