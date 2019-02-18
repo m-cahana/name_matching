@@ -1,5 +1,6 @@
 # Modified by Michael Cahana in early Dec. 2018
 # Groups operator names within our permits data
+# To be called by master.csv
 
 #===========
 # INPUTS
@@ -25,7 +26,7 @@ library(igraph)
 # data read in
 #===========
 
-df <- read_csv(file.path(ddir, 'matches', 'address_matches.csv'))
+df <- read_csv(input_file)
 
 #===========
 # functions
@@ -33,6 +34,7 @@ df <- read_csv(file.path(ddir, 'matches', 'address_matches.csv'))
 
 create_edge <- function(name, match) {
 	edge <- c(name, match)
+	return (edge)
 }
 
 extract_group_name <- function(no) {
@@ -44,6 +46,24 @@ extract_group_name <- function(no) {
 		slice(1) %>% 
 		pull()
 }
+
+alpha_order <- function(name, match, order) {
+    vec <- c(name, match)
+    a1 <- sort(vec)[order]
+    return(a1)
+}
+
+graph_cluster <- function(cluster_edges, cluster_to_plot) {
+	cluster_edges <- 
+		cluster_edges %>%  
+		filter(cluster == cluster_to_plot)
+
+	edges <- unlist(map2(cluster_edges$name, cluster_edges$match, create_edge)) 
+	g <- graph(edges, directed = FALSE)
+	plot(g, main = paste('Cluster ', cluster_to_plot, '\n', 
+		clusters$csize[cluster_to_plot], ' nodes', sep = ''))
+}
+
 
 #===========
 # find connected components
@@ -87,10 +107,18 @@ cc <-
 	arrange(cluster, name)
 
 #===========
+# plot clusters
+#===========
+
+cluster_edges <- 
+	df %>% 
+	rowwise() %>% 
+	mutate(cluster = find_cluster(name)) 
+
+#===========
 # save output
 #===========
 
-saveRDS(cc, file = file.path(ddir, 'grouped_matches', 
-	'grouped_address_matches.Rds'))
+saveRDS(cc, file = output_file)
 
 

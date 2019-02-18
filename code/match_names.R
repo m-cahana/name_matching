@@ -1,10 +1,11 @@
 # Created by Michael Cahana in early November 2018
-# Matches operator names within our modeled data
+# Matches names within a specified dataset
+# To be called by master.csv
 
 #===========
 # inputs
-# pden_desc-2017-04-30.fst
-# modeled_prices.Rds
+# df object
+# file_name string
 #===========
 
 #===========
@@ -26,34 +27,6 @@ library(tictoc)
 library(stringdist)
 library(text2vec)
 library(readxl)
-
-#===========
-# data read in
-#===========
-
-desc <- read_fst(file.path(rdir, 'pden_desc-2017-04-30.fst')) %>% 
-        mutate(api_no = str_replace_all(api_no, '-', '') %>% 
-        stri_pad_right(14, 0)) %>% 
-        select(api_no, curr_oper_id, curr_oper_no, curr_oper_name)
-
-modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) %>% 
-    select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
-    inner_join(desc, by='api_no')
-
-cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
-    select(curr_oper_name, replacement)
-
-#===========
-# operator name selection
-#===========
-
-modeled <- 
-    modeled %>% 
-    left_join(cleaned_300, by='curr_oper_name') %>% 
-    mutate(replacement = 
-        if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
-    select(-curr_oper_name) %>% 
-    rename(curr_oper_name = replacement)
 
 #===========
 # common words
@@ -348,16 +321,14 @@ alpha_order <- function(name, match, order) {
 #===========
 
 names <- 
-    modeled %>% 
-    group_by(curr_oper_name) %>% 
+    df %>% 
+    group_by(name) %>% 
     summarize(n=n()) %>% 
     arrange(desc(n)) %>%
-    filter(!is.na(curr_oper_name)) %>% 
-    mutate(id = row_number()) %>%  
-    select(-n) %>% 
-    rename(name = curr_oper_name) %>% 
+    filter(!is.na(name)) %>% 
+    select(-n) %>%
     rowwise() %>% 
-    mutate(clean_name = clean_name(name))  
+    mutate(clean_name = clean_name(name, drop_common_words=T))  
 
 it = itoken(names$clean_name, progressbar = FALSE)
 v = create_vocabulary(it) %>% prune_vocabulary()
@@ -369,9 +340,10 @@ dtm_tfidf = fit_transform(dtm, tfidf)
 
 similarity_matrix = sim2(x = dtm_tfidf, method = "cosine", norm = "l2")
 
+print('cosine similarity')
 tic()
 name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-    threshold=0.4)
+    threshold=0.3)
 toc()
 
 #===========
@@ -379,22 +351,23 @@ toc()
 #===========
 
 names <- 
-    modeled %>% 
-    select(curr_oper_name) %>%
-    filter(!is.na(curr_oper_name)) %>% 
+    df %>% 
+    select(name) %>%
+    filter(!is.na(name)) %>% 
     distinct() %>% 
     pull()
 
 clean_names <- 
-    modeled %>% 
-    select(curr_oper_name) %>%
-    filter(!is.na(curr_oper_name)) %>% 
+    df %>% 
+    select(name) %>%
+    filter(!is.na(name)) %>% 
     distinct() %>% 
     rowwise() %>% 
-    mutate(curr_oper_name = clean_name(curr_oper_name, 
+    mutate(name = clean_name(name, 
         drop_common_words=T)) %>% 
     pull()
 
+print('shared word')
 tic()
 name_map_shared_word <- match_names_shared_word(names, clean_names) %>% .[[1]]
 toc()
@@ -403,8 +376,9 @@ toc()
 # jaro distance
 #===========
 
+print('jaro distance')
 tic()
-name_map_jaro <- match_names_stringdist(names, clean_names, threshold = 0.15)
+name_map_jaro <- match_names_stringdist(names, clean_names, threshold = 0.1)
 toc()
 
 #===========
@@ -413,15 +387,18 @@ toc()
 
 name_map_cosine_similarity <- 
     name_map_cosine_similarity %>% 
-    mutate(method = 'tf-idf cosine')
+    mutate(method = 'tf-idf cosine') %>% 
+    rename(score = cosine_similarity)
 
 name_map_shared_word <- 
     name_map_shared_word %>% 
-    mutate(method = 'shared word')
+    mutate(method = 'shared word') %>% 
+    mutate(score = NA)
 
 name_map_jaro <- 
     name_map_jaro %>% 
-    mutate(method = 'jaro')
+    mutate(method = 'jaro') %>% 
+    rename(score = dist_score)
 
 master <- 
     name_map_cosine_similarity %>% 
@@ -430,7 +407,7 @@ master <-
     rowwise() %>% 
     mutate(a1 = alpha_order(name, match, 1)) %>% 
     mutate(a2 = alpha_order(name,  match, 2)) %>% 
-    select(a1, a2, method) %>% 
+    select(a1, a2, method, score) %>% 
     rename(name = a1, match = a2) %>% 
     group_by(name, match) %>% 
     filter(row_number()==1) %>%
@@ -440,7 +417,4 @@ master <-
 # save output
 #===========
 
-write_csv(master, file.path(ddir, 'matches.csv'))
-
-
-
+write_csv(master, output_file)
