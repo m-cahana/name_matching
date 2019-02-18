@@ -9,7 +9,6 @@
 # names_edited.xlsx
 # nph_oper_addr-2017-04-30.Rdata
 # coded_addresses.csv
-
 #===========
 # needed libraries
 #===========
@@ -27,6 +26,13 @@ while(basename(root) != "name_matching") {
 }
 source(file.path(root, "data.R"))
 
+#===========
+# functions
+#===========
+
+source(file.path(root, 'code', 'match_names.R'))
+source(file.path(root, 'code', 'match_addresses.R'))
+source(file.path(root, 'code', 'filter_names.R'))
 
 #===========
 # data read in
@@ -36,15 +42,11 @@ desc <- read_fst(file.path(rdir, 'pden_desc-2018-09-26.fst'),
     columns = c('api_no', 'curr_oper_id', 'curr_oper_no', 'curr_oper_name')) %>% 
         mutate(api_no = str_replace_all(api_no, '-', '') %>% 
         stri_pad_right(14, 0)) 
-
 modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) 
-
 cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
     select(curr_oper_name, replacement)
-
 # named: nph_oper_addr
 load(file.path(rdir, 'nph_oper_addr-2017-04-30.Rdata'))
-
 already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 #===========
@@ -60,17 +62,15 @@ df <-
         if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
     select(-curr_oper_name) %>% 
     rename(name = replacement)
-
 output_file <- file.path(ddir, 'matches', 'modeled_name_matches.csv')
 
-source(file.path(root, 'code', 'match_names.R'))
+match_names(df, output_file)
 
 #===========
 # match addresses within modeled
 #===========
 
 already_coded_addresses <-  pull(already_coded_addresses, address)
-
 addresses_to_google <- 
 	nph_oper_addr %>% 
 	as_tibble() %>% 
@@ -92,16 +92,14 @@ addresses_to_google <-
 	mutate(address = str_replace_all(address, '%', '')) %>%  
 	select(curr_oper_id, address) %>% 
 	mutate(address = trimws(address))
-
 df <- 
 	modeled %>% 
 	select(api_no, county, state) %>% 
     left_join(desc, by='api_no') %>% 
     left_join(addresses_to_google, by='curr_oper_id')
-
 output_file <- file.path(ddir, 'matches', 'modeled_address_matches.csv')
 
-source(file.path(root, 'code', 'match_addresses.R'))
+match_addresses(df, output_file)
 
 #===========
 # filter down name match list
@@ -110,7 +108,6 @@ source(file.path(root, 'code', 'match_addresses.R'))
 name_matches <- read_csv(file.path(ddir, 'matches', 'modeled_name_matches.csv'))
 address_matches <- read_csv(file.path(ddir, 'matches', 
 	'modeled_address_matches.csv'))
-
 output_file <- file.path(vdir, 'modeled_name_matches.csv')
 
-source(file.path(root, 'code', 'filter_names.R'))
+filter_names(name_matches, address_matches, output_file)

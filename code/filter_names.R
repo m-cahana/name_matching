@@ -12,21 +12,27 @@ while(basename(root) != "name_matching") {
 source(file.path(root, "data.R"))
 
 #===========
-# find double matches
+# functions
 #===========
 
-double_matches <- 
-	name_matches %>% 
-	inner_join(address_matches, by=c('name','match')) %>% 
-	select(-c(method.x, method.y, score)) %>% 
-    mutate(keep = 1)
+filter_names <- function(name_matches, address_matches, output_file) {
+	#===========
+	# find double matches
+	#===========
 
-#===========
-# remove doubles from name matches
-#===========
+	double_matches <- 
+		name_matches %>% 
+		inner_join(address_matches, by=c('name','match')) %>% 
+		select(-c(method.x, method.y, score)) %>% 
+	    mutate(keep = 1)
 
-name_matches <- 
-	name_matches %>% 
-	left_join(double_matches, by=c('name', 'match'))
+	#===========
+	# remove doubles from name matches
+	#===========
 
-write_csv(name_matches, output_file)
+	name_matches <- 
+		name_matches %>% 
+		left_join(double_matches, by=c('name', 'match'))
+
+	write_csv(name_matches, output_file)
+}

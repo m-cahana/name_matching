@@ -64,7 +64,6 @@ graph_cluster <- function(cluster_edges, cluster_to_plot) {
 		clusters$csize[cluster_to_plot], ' nodes', sep = ''))
 }
 
-
 #===========
 # find connected components
 #===========
