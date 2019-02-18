@@ -2,13 +2,15 @@
 # Determines name matches given name and address inputs
 
 #===========
-# inputs
+# inputs: 
 #===========
 # pden_desc-2018-09-26.fst
 # modeled_prices.Rds
 # names_edited.xlsx
 # nph_oper_addr-2017-04-30.Rdata
 # coded_addresses.csv
+
+
 #===========
 # needed libraries
 #===========
@@ -99,7 +101,7 @@ df <-
     left_join(addresses_to_google, by='curr_oper_id')
 output_file <- file.path(ddir, 'matches', 'modeled_address_matches.csv')
 
-match_addresses(df, output_file)
+match_addresses(df, already_coded_addresses, output_file)
 
 #===========
 # filter down name match list

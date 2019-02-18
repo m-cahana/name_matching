@@ -3,10 +3,10 @@
 # To be called by master.csv
 
 #===========
-# inputs
-# df object
-# file_name string
+# inputs: 
 #===========
+# df tibble
+# output_file string
 
 #===========
 # standard setup
