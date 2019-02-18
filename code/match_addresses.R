@@ -1,11 +1,13 @@
 # Created by Michael Cahana in early February 2018
-# Matches operator names within our modeled data by checking whether 
-# their addresses match
-library(tidyverse)
-library(fst)
-library(stringi)
-library(googleway)
-library(tictoc)
+# Geocodes addresses of specified file and determines matches accordingly
+# To be called by master.csv
+
+#===========
+# inputs
+# df tibble
+# file_name string
+# already_coded_addresses list
+#===========
 
 #===========
 # standard setup
@@ -17,19 +19,13 @@ while(basename(root) != "name_matching") {
 source(file.path(root, "data.R"))
 
 #===========
-# data read in
+# needed libraries
 #===========
-
-desc <- read_fst(file.path(rdir, 'pden_desc-2018-09-26.fst')) %>% 
-        mutate(api_no = str_replace_all(api_no, '-', '') %>% 
-        	stri_pad_right(14, 0)) %>% 
-        select(api_no, curr_oper_id, curr_oper_name)
-
-modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) %>% 
-    select(api_no, county, state) 
-
-# named: nph_oper_addr
-load(file.path(rdir, 'nph_oper_addr-2017-04-30.Rdata'))
+library(tidyverse)
+library(fst)
+library(stringi)
+library(googleway)
+library(tictoc)
 
 #===========
 # functions
@@ -52,36 +48,6 @@ alpha_order <- function(name, match, order) {
 }
 
 #===========
-# data preparation
-#===========
-
-addresses_to_google <- 
-	nph_oper_addr %>% 
-	as_tibble() %>% 
-	rename(curr_oper_id = assoc_id) %>% 
-	filter(addr_1!='') %>% 
-	# drop PO boxes
-	filter(!str_detect(toupper(addr_1), 'BOX')) %>% 
-	filter(!str_detect(toupper(addr_1), 'P.O.')) %>%
-	filter(!str_detect(toupper(addr_2), 'BOX')) %>% 
-	filter(!str_detect(toupper(addr_2), 'P.O.')) %>%
-	# concatenate addresses
-	mutate(address = if_else(addr_2!='', paste(addr_1, addr_2), addr_1)) %>% 
-	mutate(address = if_else(city!='', 
-		paste(address, city, sep=', '), address)) %>% 
-	mutate(address = if_else(state_abrv!='', 
-		paste(address, state_abrv, sep=', '), address)) %>% 
-	mutate(address = if_else(zip!='', 
-		paste(address, zip, sep=', '), address)) %>%
-	mutate(address = str_replace_all(address, '%', '')) %>%  
-	select(curr_oper_id, address)
-
-modeled <- 
-	modeled %>% 
-    left_join(desc, by='api_no') %>% 
-    left_join(addresses_to_google, by='curr_oper_id')
-
-#===========
 # geocode
 #===========
 
@@ -89,34 +55,40 @@ set_key(google_api_key)
 
 tic()
 coded_addresses <- 
-	modeled %>% 
+	df %>% 
 	filter(!is.na(address)) %>%
-	count(address) %>% 
-	rowwise() %>% 
-	mutate(coded_address = geocode(address)) %>% 
-	select(-n)
+	filter(!(address %in% already_coded_addresses)) %>% 
+	count(address) 
+if (dim(coded_addresses)[1]>0) {
+	coded_addresses <- 
+		coded_addresses %>% 
+		rowwise() %>%
+		mutate(coded_address = geocode(address)) %>% 
+		select(-n)
+	write_csv(coded_addresses, file.path(ddir, 'coded_addresses.csv'), append=T)
+}
 toc()
 
-write_csv(coded_addresses, file.path(ddir, 'coded_addresses.csv'))
+coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 #===========
 # determine matches 
 #===========
 
-modeled <- 
-	modeled %>% 
+df <- 
+	df %>% 
 	left_join(coded_addresses, by='address') %>% 
 	filter(!is.na(coded_address)) %>% 
 	filter(coded_address!='error')
 
-modeled <- 
-	split(modeled$curr_oper_name, modeled$coded_address) %>% 
+df <- 
+	split(df$curr_oper_name, df$coded_address) %>% 
 	lapply(unique)
 
 master <- tibble(name = NA, match = NA)
-for (a in 1:length(modeled)) {
-	address_group <- modeled[[a]]
-	address <- names(modeled[a])
+for (a in 1:length(df)) {
+	address_group <- df[[a]]
+	address <- names(df[a])
 	# print(address)
 	for (i in 1:length(address_group)) {
 		for (j in 1:length(address_group)) {
@@ -139,4 +111,4 @@ master <-
     na.omit() %>% 
     distinct(name, match, .keep_all = T)
 
-write_csv(master, file.path(ddir, 'matches', 'address_matches.csv'))
+write_csv(master, output_file)
