@@ -312,109 +312,114 @@ alpha_order <- function(name, match, order) {
     return(a1)
 }
 
-#=================================
-# ----------- matching -----------
-#=================================
+match_names <- function(df, output_file) {
 
-#===========
-# bag of words, tf-idf, cosine similarity
-#===========
+    #=================================
+    # ----------- matching -----------
+    #=================================
 
-names <- 
-    df %>% 
-    group_by(name) %>% 
-    summarize(n=n()) %>% 
-    arrange(desc(n)) %>%
-    filter(!is.na(name)) %>% 
-    select(-n) %>%
-    rowwise() %>% 
-    mutate(clean_name = clean_name(name, drop_common_words=T))  
+    #===========
+    # bag of words, tf-idf, cosine similarity
+    #===========
 
-it = itoken(names$clean_name, progressbar = FALSE)
-v = create_vocabulary(it) %>% prune_vocabulary()
-vectorizer = vocab_vectorizer(v)
+    names <- 
+        df %>% 
+        group_by(name) %>% 
+        summarize(n=n()) %>% 
+        arrange(desc(n)) %>%
+        filter(!is.na(name)) %>% 
+        select(-n) %>%
+        rowwise() %>% 
+        mutate(clean_name = clean_name(name, drop_common_words=T))  
 
-dtm = create_dtm(it, vectorizer)
-tfidf = TfIdf$new()
-dtm_tfidf = fit_transform(dtm, tfidf)
+    it = itoken(names$clean_name, progressbar = FALSE)
+    v = create_vocabulary(it) %>% prune_vocabulary()
+    vectorizer = vocab_vectorizer(v)
 
-similarity_matrix = sim2(x = dtm_tfidf, method = "cosine", norm = "l2")
+    dtm = create_dtm(it, vectorizer)
+    tfidf = TfIdf$new()
+    dtm_tfidf = fit_transform(dtm, tfidf)
 
-print('cosine similarity')
-tic()
-name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-    threshold=0.3)
-toc()
+    similarity_matrix = sim2(x = dtm_tfidf, method = "cosine", norm = "l2")
 
-#===========
-# shared word
-#===========
+    print('cosine similarity')
+    tic()
+    name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
+        threshold=0.3)
+    toc()
 
-names <- 
-    df %>% 
-    select(name) %>%
-    filter(!is.na(name)) %>% 
-    distinct() %>% 
-    pull()
+    #===========
+    # shared word
+    #===========
 
-clean_names <- 
-    df %>% 
-    select(name) %>%
-    filter(!is.na(name)) %>% 
-    distinct() %>% 
-    rowwise() %>% 
-    mutate(name = clean_name(name, 
-        drop_common_words=T)) %>% 
-    pull()
+    names <- 
+        df %>% 
+        select(name) %>%
+        filter(!is.na(name)) %>% 
+        distinct() %>% 
+        pull()
 
-print('shared word')
-tic()
-name_map_shared_word <- match_names_shared_word(names, clean_names) %>% .[[1]]
-toc()
+    clean_names <- 
+        df %>% 
+        select(name) %>%
+        filter(!is.na(name)) %>% 
+        distinct() %>% 
+        rowwise() %>% 
+        mutate(name = clean_name(name, 
+            drop_common_words=T)) %>% 
+        pull()
 
-#===========
-# jaro distance
-#===========
+    print('shared word')
+    tic()
+    name_map_shared_word <- 
+        match_names_shared_word(names, clean_names) %>% .[[1]]
+    toc()
 
-print('jaro distance')
-tic()
-name_map_jaro <- match_names_stringdist(names, clean_names, threshold = 0.1)
-toc()
+    #===========
+    # jaro distance
+    #===========
 
-#===========
-# combine
-#=========== 
+    print('jaro distance')
+    tic()
+    name_map_jaro <- match_names_stringdist(names, clean_names, threshold = 0.1)
+    toc()
 
-name_map_cosine_similarity <- 
-    name_map_cosine_similarity %>% 
-    mutate(method = 'tf-idf cosine') %>% 
-    rename(score = cosine_similarity)
+    #===========
+    # combine
+    #=========== 
 
-name_map_shared_word <- 
-    name_map_shared_word %>% 
-    mutate(method = 'shared word') %>% 
-    mutate(score = NA)
+    name_map_cosine_similarity <- 
+        name_map_cosine_similarity %>% 
+        mutate(method = 'tf-idf cosine') %>% 
+        rename(score = cosine_similarity)
 
-name_map_jaro <- 
-    name_map_jaro %>% 
-    mutate(method = 'jaro') %>% 
-    rename(score = dist_score)
+    name_map_shared_word <- 
+        name_map_shared_word %>% 
+        mutate(method = 'shared word') %>% 
+        mutate(score = NA)
 
-master <- 
-    name_map_cosine_similarity %>% 
-    bind_rows(name_map_shared_word) %>%
-    bind_rows(name_map_jaro) %>% 
-    rowwise() %>% 
-    mutate(a1 = alpha_order(name, match, 1)) %>% 
-    mutate(a2 = alpha_order(name,  match, 2)) %>% 
-    select(a1, a2, method, score) %>% 
-    rename(name = a1, match = a2) %>% 
-    group_by(name, match) %>% 
-    filter(row_number()==1) %>%
-    arrange(name)
+    name_map_jaro <- 
+        name_map_jaro %>% 
+        mutate(method = 'jaro') %>% 
+        rename(score = dist_score)
 
-#===========
-# save output
-#===========
+    master <- 
+        name_map_cosine_similarity %>% 
+        bind_rows(name_map_shared_word) %>%
+        bind_rows(name_map_jaro) %>% 
+        rowwise() %>% 
+        mutate(a1 = alpha_order(name, match, 1)) %>% 
+        mutate(a2 = alpha_order(name,  match, 2)) %>% 
+        select(a1, a2, method, score) %>% 
+        rename(name = a1, match = a2) %>% 
+        group_by(name, match) %>% 
+        filter(row_number()==1) %>%
+        arrange(name) %>% 
+        filter(name!=match)
 
-write_csv(master, output_file)
+    #===========
+    # save output
+    #===========
+
+    write_csv(master, output_file)
+}
