@@ -33,7 +33,8 @@ library(readxl)
 #===========
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
-    'ENERGY', 'OIL', 'GAS', '&', 'OPERATIONS', 'PRODUCTIONS', 'ENGY', 'ENERGY', 
+    'ENERGY', 'OIL', 'GAS', 'O&G', '&', 'OPERATIONS', 'PRODUCTIONS', 'ENGY', 
+    'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
     'PETROLEUM', 'JR', 'MANAGEMENT', 'MGMT', 'ET', 'AL', 'DRILLING', 'ETAL', 

@@ -32,9 +32,9 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-source(file.path(root, 'code', 'match_names.R'))
-source(file.path(root, 'code', 'match_addresses.R'))
-source(file.path(root, 'code', 'filter_names.R'))
+source(file.path(root, 'code', 'matching', 'match_names.R'))
+source(file.path(root, 'code', 'matching', 'match_addresses.R'))
+source(file.path(root, 'code', 'matching', 'filter_names.R'))
 
 #===========
 # data read in
@@ -48,7 +48,7 @@ modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds'))
 cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
     select(curr_oper_name, replacement)
 # named: nph_oper_addr
-load(file.path(rdir, 'nph_oper_addr-2017-04-30.Rdata'))
+load(file.path(rdir, 'addresses', 'nph_oper_addr-2017-04-30.Rdata'))
 already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 #===========
