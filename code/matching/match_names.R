@@ -27,14 +27,16 @@ library(tictoc)
 library(stringdist)
 library(text2vec)
 library(readxl)
+library(fuzzyjoin)
 
 #===========
 # common words
 #===========
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
-    'ENERGY', 'OIL', 'GAS', 'O&G', '&', 'OPERATIONS', 'PRODUCTIONS', 'ENGY', 
-    'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 
+    'ENERGY', 'OIL', 'GAS', 'O&G', 'OG', '&', 'OPERATIONS', 'PRODUCTIONS', 
+    'ENGY', 
+    'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 'TOM', 'RANDY', 'PATRICIA', 'MARK', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
     'PETROLEUM', 'JR', 'MANAGEMENT', 'MGMT', 'ET', 'AL', 'DRILLING', 'ETAL', 
@@ -63,12 +65,10 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
 clean_name  <- function(name, drop_common_words=FALSE) {
     words <- 
         strsplit(name %>% str_replace_all(',', ' '), split=' ')[[1]] %>% 
-        str_replace_all('\\.', '') %>%
-        str_replace_all('-', ' ') %>%
-        str_replace_all("'", '') %>%
-        str_replace_all("\\)", '') %>%
-        str_replace_all("\\(", '') %>%
-        toupper()
+        str_replace_all('[[:punct:]]', '') %>% 
+        toupper() %>% 
+        str_trim() %>% 
+        str_squish()
     if (drop_common_words) {
         words <- words[!words %in% common_words]
     } else {
@@ -90,15 +90,12 @@ get_words  <- function(names) {
     for (name in names){ 
         words <- 
             strsplit(name, split=' ')[[1]] %>% 
-            str_replace(',', '') %>% 
-            str_replace_all('\\.', '') %>%
-            str_replace_all('-', '') %>%
-            str_replace_all("'", '') %>%
-            str_replace_all("\\)", '') %>%
-            str_replace_all("\\(", '') %>%
-            toupper()
+            str_replace_all('[[:punct:]]', '') %>% 
+            toupper() %>% 
+            str_trim() %>% 
+            str_squish()
         words <- words[!words %in% common_words]
-        # letters <- words[nchar(words)==1] %>% paste(collapse = '-')
+        
         letters <- ifelse(nchar(words)>1, '', words) %>% 
             paste(collapse = '-') %>% str_replace_all('--', ' ') %>% 
             strsplit(split=' ') %>% .[[1]] %>% .[!nchar(.)<3] %>% 
@@ -134,55 +131,6 @@ get_matches <- function(words, bag) {
     }
     indices <- indices[!indices==1]
     return (indices)
-}
-
-review_df <- function(df) {
-	df <- 
-		df %>% 
-		mutate(id = row_number()) %>% 
-		mutate(response = 1)
-
-	ns <- 0
-	ys <- 0
-	ms <- 0
-	for (i in 1:dim(df)[1]) {
-		print(paste('name', df %>% slice(i) %>% select(name), sep=': '))
-		print(paste('replacement', 
-			df %>% slice(i) %>% select(replacement), sep=': '))
-		user_response <- 
-			readline(prompt=paste('Does the replacement look reasonable?', 
-				'Enter 1 if yes, 0 if no, 2 if unsure: ', sep=' ')) %>% 
-			as.numeric()
-		while (!(user_response %in% c(0,1,2))) {
-			user_response <- 
-			readline(prompt=paste('Does the replacement look reasonable?', 
-				'Enter 1 if yes, 0 if no, 2 if unsure: ', sep=' ')) %>% 
-			as.numeric()
-		}
-		df <- 
-			df %>% 
-			mutate(response = if_else(id==i, user_response, response))
-		if (user_response==0) {
-			# df <- 
-			# 	df %>% 
-			# 	mutate(replacement = if_else(id==i, 'NA', replacement))
-			ns <- ns + 1
-		} else if (user_response==1) {
-			ys <- ys + 1
-		} else {
-			ms <- ms + 1
-		}
-		if (i%%10==0) {
-			cat('\n')
-			print(paste(dim(df)[1]-i, 'rows left', sep=' ')) 
-			cat('\n')
-		}
-	}
-	cat('**********\n')
-	print(paste(ys, 'correct replacements,', ns, 
-		'flagged as unreasonable,', ms, 'flagged as unsure', sep=' '))
-	cat('**********\n')
-	return (df)
 }
 
 match_names_stringdist <- function(names, clean_names, 
@@ -236,14 +184,13 @@ match_names_stringdist <- function(names, clean_names,
     return(df)
 }
 
-match_names_shared_word <- function(names, clean_names) {
+match_names_shared_word <- function(names) {
     count <- 0
     bad_names <- c()
     words <- get_words(names)
     while (length(words)>0){
         bag <- words[[1]]
         name <- names[1]
-        clean_name <- clean_names[1]
         matches <- get_matches(words, bag)
         if(length(matches)>0) {
             if (count==0) {
@@ -256,12 +203,10 @@ match_names_shared_word <- function(names, clean_names) {
             count <- count + 1
             words <- words[-1]
             names <- names[-1]
-            clean_names <- clean_names[-1]
         } else {
             bad_names <- c(bad_names, names[1])
             words <- words[-1]
             names <- names[-1]
-            clean_names <- clean_names[-1]
         }
     }
     return (list(df, bad_names))
@@ -360,6 +305,16 @@ match_names <- function(df, output_file) {
         distinct() %>% 
         pull()
 
+    print('shared word')
+    tic()
+    name_map_shared_word <- 
+        match_names_shared_word(names) %>% .[[1]]
+    toc()
+
+    #===========
+    # jaro distance
+    #===========
+
     clean_names <- 
         df %>% 
         select(name) %>%
@@ -369,16 +324,6 @@ match_names <- function(df, output_file) {
         mutate(name = clean_name(name, 
             drop_common_words=T)) %>% 
         pull()
-
-    print('shared word')
-    tic()
-    name_map_shared_word <- 
-        match_names_shared_word(names, clean_names) %>% .[[1]]
-    toc()
-
-    #===========
-    # jaro distance
-    #===========
 
     print('jaro distance')
     tic()

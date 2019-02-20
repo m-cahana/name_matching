@@ -32,6 +32,7 @@ source(file.path(root, "data.R"))
 source(file.path(root, 'code', 'matching', 'match_names.R'))
 source(file.path(root, 'code', 'matching', 'match_addresses.R'))
 source(file.path(root, 'code', 'matching', 'filter_names.R'))
+source(file.path(root, 'code', 'matching', 'initial_regex.R'))
 
 #===========
 # data read in
@@ -46,6 +47,7 @@ already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 df <- 
     leases %>% 
+    st_set_geometry(NULL) %>% 
     count(grnte_al) %>% 
     rename(name = grnte_al)
 
@@ -61,8 +63,9 @@ already_coded_addresses <-  pull(already_coded_addresses, address)
 
 df <- 
 	leases %>% 
-	count(grnte_ad) %>% 
-	rename(address = grnte_ad)
+	st_set_geometry(NULL) %>% 
+	rename(address = grnte_ad, name = grnte_al) %>% 
+	select(name, address) 
 
 output_file <- file.path(ddir, 'matches', 'leases_address_matches.csv')
 

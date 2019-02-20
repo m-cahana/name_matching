@@ -32,6 +32,7 @@ library(tictoc)
 #===========
 
 geocode <- function(address) {
+	print(address)
 	google_output <- google_geocode(address = address, simplify = TRUE) 
 	coded_address <- google_output$results$formatted_address %>% .[1]
 
@@ -51,6 +52,30 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 	#===========
 	# geocode
 	#===========
+
+	df <- 
+		df %>% 
+		filter(address!='') %>% 
+		# drop PO boxes
+		filter(!str_detect(toupper(address), 'BOX')) %>% 
+		filter(!str_detect(toupper(address), 'P.O.')) %>%
+		filter(!str_detect(toupper(address), 'BOX')) %>% 
+		filter(!str_detect(toupper(address), 'P.O.')) %>% 
+		filter(!str_detect(address, 'POB \\d')) %>% 
+		# remove other outliers
+		filter(!substring(address, 0,1)==',') %>% 
+		filter(!substring(address, 0,1)=='-') %>% 
+		filter(!substring(address, 0,1)=='(') %>% 
+		# clean up formatting to remove duplicates
+		mutate(address = str_replace_all(address, '%', '')) %>% 
+		mutate(address = str_replace_all(address, '\\*', '')) %>%
+		mutate(address = str_replace_all(address, '\\+', '')) %>%  
+		mutate(address = str_replace_all(address, '£', '')) %>% 
+		mutate(address = str_replace_all(address, '&', '')) %>%
+		mutate(address = str_replace_all(address, '#', '')) %>% 
+		mutate(address = str_trim(address)) %>% 
+		mutate(address = str_squish(address)) %>% 
+		mutate(address =toupper(address)) 
 
 	set_key(google_api_key)
 
@@ -84,7 +109,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		filter(coded_address!='error')
 
 	df <- 
-		split(df$curr_oper_name, df$coded_address) %>% 
+		split(df$name, df$coded_address) %>% 
 		lapply(unique)
 
 	master <- tibble(name = NA, match = NA)
