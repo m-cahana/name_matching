@@ -31,8 +31,8 @@ library(tictoc)
 # functions
 #===========
 
-geocode <- function(address) {
-	print(address)
+geocode <- function(address, row) {
+	print(paste(row, address, sep=' - ')) 
 	google_output <- google_geocode(address = address, simplify = TRUE) 
 	coded_address <- google_output$results$formatted_address %>% .[1]
 
@@ -40,6 +40,19 @@ geocode <- function(address) {
 		return ('error')
 	}
 	return (coded_address)
+}
+
+code_address_chunk <- function(address_chunk) {
+	cat('\n ************ new chunk ************') 
+	print(dim(address_chunk))
+	cat('*********************************** \n') 
+	address_chunk <- 
+		address_chunk %>% 
+		mutate(row = row_number()) %>% 
+		rowwise() %>% 
+		mutate(coded_address = geocode(address, row)) %>% 
+		select(-c(n, row)) 
+	write_csv(address_chunk, file.path(ddir, 'coded_addresses.csv'), append=T)
 }
 
 alpha_order <- function(name, match, order) {
@@ -53,6 +66,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 	# geocode
 	#===========
 
+	# clean addresses
 	df <- 
 		df %>% 
 		filter(address!='') %>% 
@@ -77,6 +91,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_squish(address)) %>% 
 		mutate(address =toupper(address)) 
 
+	# set Google Maps API Key (specified in paths.R)
 	set_key(google_api_key)
 
 	tic()
@@ -86,13 +101,15 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		filter(!(address %in% already_coded_addresses)) %>% 
 		count(address) 
 	if (dim(coded_addresses)[1]>0) {
-		coded_addresses <- 
-			coded_addresses %>% 
-			rowwise() %>%
-			mutate(coded_address = geocode(address)) %>% 
-			select(-n)
-		write_csv(coded_addresses, file.path(ddir, 'coded_addresses.csv'), 
-			append=T)
+		# divide coded addresses into chunks of ~500 rows, such that we save 
+		# geocoding results in increments instead of all at once
+		coded_addresses <- split(coded_addresses, 
+			seq(1,dim(coded_addresses)[1] %/% 500))
+		# geocode chunk by chunk
+		coded_addresses <-
+			coded_addresses %>%  
+			lapply(code_address_chunk) %>% 
+			bind_rows()
 	}
 	toc()
 
@@ -112,6 +129,8 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		split(df$name, df$coded_address) %>% 
 		lapply(unique)
 
+	# enumerate every distinct 1:1 match of operators (n choose 2) within
+	# a group of operators sharing the same coded address
 	master <- tibble(name = NA, match = NA)
 	for (a in 1:length(df)) {
 		address_group <- df[[a]]
@@ -129,6 +148,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		}
 	}
 
+	# sort matches alphabetically to remove duplicates, save output
 	master <- 
 		master %>% 
 		rowwise() %>% 
