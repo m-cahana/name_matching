@@ -15,6 +15,7 @@ library(tidyverse)
 library(fst)
 library(stringi)
 library(readxl)
+library(sf)
 
 #===========
 # standard setup
@@ -32,7 +33,6 @@ source(file.path(root, "data.R"))
 source(file.path(root, 'code', 'matching', 'match_names.R'))
 source(file.path(root, 'code', 'matching', 'match_addresses.R'))
 source(file.path(root, 'code', 'matching', 'filter_names.R'))
-source(file.path(root, 'code', 'matching', 'initial_regex.R'))
 
 #===========
 # data read in
