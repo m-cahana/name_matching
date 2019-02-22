@@ -35,7 +35,9 @@ library(fuzzyjoin)
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
     'ENERGY', 'OIL', 'GAS', 'O&G', 'OG', '&', 'OPERATIONS', 'PRODUCTIONS', 
-    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'NORTH', 
+    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'NORTH', 'ROYALTIES', 'EP', 
+    'LM', 'CHARLES', 'CRAIG', 'RESERVES', 'ROBERT', 'SCOTT', 'STEVEN', 
+    'HOLDING', 
     'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 'TOM', 'RANDY', 'PATRICIA', 'MARK', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
@@ -194,10 +196,10 @@ match_names_shared_word <- function(names) {
         matches <- get_matches(words, bag)
         if(length(matches)>0) {
             if (count==0) {
-                df <- matched_df(name, matches, names)
+                matches_df <- matched_df(name, matches, names)
             } else {
-                df <- 
-                    df %>% 
+                matches_df <- 
+                    matches_df %>% 
                     bind_rows(matched_df(name, matches, names)) 
             }
             count <- count + 1
@@ -209,7 +211,7 @@ match_names_shared_word <- function(names) {
             names <- names[-1]
         }
     }
-    return (list(df, bad_names))
+    return (list(matches_df, bad_names))
 }
 
 match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {

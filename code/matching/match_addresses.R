@@ -43,7 +43,7 @@ geocode <- function(address, row) {
 }
 
 code_address_chunk <- function(address_chunk) {
-	cat('\n ************ new chunk ************') 
+	cat('\n ************ new chunk ************ \n') 
 	print(dim(address_chunk))
 	cat('*********************************** \n') 
 	address_chunk <- 
