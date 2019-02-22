@@ -35,7 +35,7 @@ library(fuzzyjoin)
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
     'ENERGY', 'OIL', 'GAS', 'O&G', 'OG', '&', 'OPERATIONS', 'PRODUCTIONS', 
-    'ENGY', 
+    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'NORTH', 
     'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 'TOM', 'RANDY', 'PATRICIA', 'MARK', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
@@ -95,7 +95,7 @@ get_words  <- function(names) {
             str_trim() %>% 
             str_squish()
         words <- words[!words %in% common_words]
-        
+
         letters <- ifelse(nchar(words)>1, '', words) %>% 
             paste(collapse = '-') %>% str_replace_all('--', ' ') %>% 
             strsplit(split=' ') %>% .[[1]] %>% .[!nchar(.)<3] %>% 
