@@ -35,9 +35,10 @@ library(fuzzyjoin)
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
     'ENERGY', 'OIL', 'GAS', 'O&G', 'OG', '&', 'OPERATIONS', 'PRODUCTIONS', 
-    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'NORTH', 'ROYALTIES', 'EP', 
+    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'ROYALTIES', 'EP', 
     'LM', 'CHARLES', 'CRAIG', 'RESERVES', 'ROBERT', 'SCOTT', 'STEVEN', 
-    'HOLDING', 
+    'HOLDING', 'ACQUISITION', 'CONSULTANTS', 'CONSULTANT', 'TRUST',
+    'GREG', 'LE', 
     'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 'TOM', 'RANDY', 'PATRICIA', 'MARK', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
@@ -60,6 +61,12 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
     'RONALD', 'LARRY', 'DONALD', 'RALPH', 'PIPE', 'FRANK', 'SALES', 'KENNETH', 
     'DON', 'RAY',  'HAROLD', 'DALE', 'MARY')
 
+standalone_words <- c('AMERICA', 'PERMIAN', 'MARCELLUS', 'UTICA', 
+    'HAYNESVILLE-BOSSIER', 'HAYNESVILLE', 'BOSSIER', 'BARNETT', 'WOODFORD', 
+    'EAGLE FORD', 'FAYETTEVILLE', 'NIOBRARA', 'BAKKEN', 'ANTRIM', 'CENTURY', 
+    'WESTERN', 'WEST', 'NORTHERN', 'NORTH', 'SOUTH', 'SOUTHERN', 'EAST', 
+    'EASTERN')
+
 #===========
 # functions
 #===========
@@ -67,12 +74,17 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
 clean_name  <- function(name, drop_common_words=FALSE) {
     words <- 
         strsplit(name %>% str_replace_all(',', ' '), split=' ')[[1]] %>% 
+        str_replace_all('\xc9', 'E') %>%
         str_replace_all('[[:punct:]]', '') %>% 
         toupper() %>% 
         str_trim() %>% 
         str_squish()
     if (drop_common_words) {
         words <- words[!words %in% common_words]
+        all_drops <- words[!words %in% standalone_words]
+        if (length(all_drops)>0) {
+            words <- all_drops
+        }
     } else {
         words <- words[!words %in% c('', ' ')]
     }
@@ -92,12 +104,16 @@ get_words  <- function(names) {
     for (name in names){ 
         words <- 
             strsplit(name, split=' ')[[1]] %>% 
+            str_replace_all('\xc9', 'E') %>%
             str_replace_all('[[:punct:]]', '') %>% 
             toupper() %>% 
             str_trim() %>% 
             str_squish()
         words <- words[!words %in% common_words]
-
+        all_drops <- words[!words %in% standalone_words]
+        if (length(all_drops)>0) {
+            words <- all_drops
+        }
         letters <- ifelse(nchar(words)>1, '', words) %>% 
             paste(collapse = '-') %>% str_replace_all('--', ' ') %>% 
             strsplit(split=' ') %>% .[[1]] %>% .[!nchar(.)<3] %>% 
