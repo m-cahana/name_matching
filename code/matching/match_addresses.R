@@ -63,20 +63,63 @@ alpha_order <- function(name, match, order) {
 
 match_addresses <- function(df, already_coded_addresses, output_file) {
 	#===========
+	# clean PO boxes
+	#===========
+
+	df <- 
+		df %>% 
+		filter(address!='') %>% 
+		mutate(address =toupper(address)) %>% 
+		mutate(address = str_trim(address)) %>% 
+		mutate(address = str_squish(address)) 
+
+	# extract PO Boxes
+	po_variations <- c('BOX', 'B OX', 'P\\.O\\.', 'P\\.O', 'PO\\.', 
+			'PO', 'POB', 'P O', 'P\\. O\\.', 'DRAWER', 'BO', 'OX', 'BX', 
+			'OBOX', 'POBOX')
+	po_regex <- paste('\\b', 
+		paste(po_variations,  
+			collapse='\\b|\\b'), 
+		'\\b', sep = '')
+
+	po_num_regex <- paste(
+		paste('\\b', paste(po_variations, collapse=' \\d+|\\b'), ' \\d+', 
+			sep = ''), 
+		paste('\\b', paste(po_variations, collapse='\\d+|\\b'), '\\d+', 
+			sep = ''), 
+		sep='|')
+
+	po <- 
+		df %>% 
+		filter(str_detect(address, po_regex)) %>% 
+		mutate(address = str_replace_all(address, '#', '')) %>% 
+		mutate(city = str_extract(address, ',(.*)')) %>% 
+		mutate(city = str_replace_all(city, ',', '')) %>% 
+		mutate(zip = str_extract(city, '\\d+')) %>% 
+		mutate(city = str_replace_all(city, '[\\d-]+', '')) %>% 
+		mutate(city = str_squish(str_trim(city))) %>% 
+		mutate(city = str_squish(str_trim(city))) %>% 
+		mutate(po = str_extract(address, po_num_regex) %>% 
+			str_extract('\\d+')) %>% 
+		# drop outliers (ex: PO DRAWER V, PO BOX [blank])
+		filter(!is.na(po)) %>% 
+		mutate(coded_address = paste(po, city, zip)) %>% 
+		select(name, address, coded_address) 
+
+	write_csv(unique(select(po, address, coded_address)), 
+		file.path(ddir, 'coded_pos.csv'))
+
+	#===========
 	# geocode
 	#===========
 
 	# clean addresses
-	df <- 
+	non_po <- 
 		df %>% 
-		filter(address!='') %>% 
 		# drop PO boxes
-		filter(!str_detect(toupper(address), 'BOX')) %>% 
-		filter(!str_detect(toupper(address), 'P.O.')) %>%
-		filter(!str_detect(toupper(address), 'BOX')) %>% 
-		filter(!str_detect(toupper(address), 'P.O.')) %>% 
-		filter(!str_detect(address, 'POB \\d')) %>% 
+		filter(!str_detect(address, po_regex)) %>% 
 		# remove other outliers
+		filter(!substring(address, 0,1)==' ') %>% 
 		filter(!substring(address, 0,1)==',') %>% 
 		filter(!substring(address, 0,1)=='-') %>% 
 		filter(!substring(address, 0,1)=='(') %>% 
@@ -86,18 +129,15 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_replace_all(address, '\\+', '')) %>%  
 		mutate(address = str_replace_all(address, '£', '')) %>% 
 		mutate(address = str_replace_all(address, '&', '')) %>%
-		mutate(address = str_replace_all(address, '#', '')) %>% 
-		mutate(address = str_trim(address)) %>% 
-		mutate(address = str_squish(address)) %>% 
-		mutate(address =toupper(address)) 
+		mutate(address = str_replace_all(address, '#', '')) 
 
 	# set Google Maps API Key (specified in paths.R)
 	set_key(google_api_key)
 
-	tic()
 	coded_addresses <- 
-		df %>% 
+		non_po %>% 
 		filter(!is.na(address)) %>%
+		mutate(address = str_trim(str_squish(address))) %>%
 		filter(!(address %in% already_coded_addresses)) %>% 
 		count(address) 
 	if (dim(coded_addresses)[1]>0) {
@@ -111,19 +151,30 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 			lapply(code_address_chunk) %>% 
 			bind_rows()
 	}
-	toc()
-
-	coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 	#===========
 	# determine matches 
 	#===========
 
+	coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv')) %>% 
+		bind_rows(read_csv(file.path(ddir, 'coded_pos.csv')))
+
 	df <- 
-		df %>% 
+		bind_rows(select(po, name, address), select(non_po, name, address)) %>% 
 		left_join(coded_addresses, by='address') %>% 
 		filter(!is.na(coded_address)) %>% 
-		filter(coded_address!='error')
+		filter(coded_address!='error') 
+
+	bad_addresses <- 
+		df %>% 
+		group_by(coded_address) %>% 
+		summarize(n = n_distinct(name)) %>% 
+		filter(n==1 | n>100) %>% 
+		pull(coded_address)
+
+	df <- 
+		df %>% 
+		filter(!(coded_address %in% bad_addresses))
 
 	df <- 
 		split(df$name, df$coded_address) %>% 
@@ -131,21 +182,20 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 
 	# enumerate every distinct 1:1 match of operators (n choose 2) within
 	# a group of operators sharing the same coded address
+	# although we hate for loops, we need to keep the list object and its title
+	# and i didn't know how to preserve both in an apply call 
 	master <- tibble(name = NA, match = NA)
-	for (a in 1:length(df)) {
-		address_group <- df[[a]]
-		address <- names(df[a])
-		# print(address)
-		for (i in 1:length(address_group)) {
-			for (j in 1:length(address_group)) {
-				if (i!=j) {
-					row <- tibble(name = address_group[i], 
-						match = address_group[j], 
-						address = address, method = 'geocode')
-					master <- bind_rows(master, row)
-				}
-			}
-		}
+	for (i in 1:length(df)) {
+		address_group <- df[[i]]
+		address <- names(df[i])
+		row <- 
+			address_group %>% 
+			combn(2) %>% 
+			t() %>% 
+			as_tibble() %>% 
+			setNames(c('name', 'match')) %>% 
+			mutate(address = address)
+		master <- bind_rows(master, row)
 	}
 
 	# sort matches alphabetically to remove duplicates, save output
@@ -154,7 +204,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		rowwise() %>% 
 		mutate(a1 = alpha_order(name, match, 1)) %>% 
 	    mutate(a2 = alpha_order(name,  match, 2)) %>% 
-	    select(a1, a2, address, method) %>% 
+	    select(a1, a2, address) %>% 
 	    rename(name = a1, match = a2) %>%  
 	    na.omit() %>% 
 	    distinct(name, match, .keep_all = T)
