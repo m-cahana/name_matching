@@ -232,9 +232,10 @@ match_names_shared_word <- function(names, idfs, ...) {
             as.vector(sapply(matches[[2]], 
                 extract_idf, idfs))
         shared_words <- as.vector(sapply(matches[[2]], 
-            str_count, '\\|')) + 1
+            str_count, '\\|'))
         matches <- matches[[1]]
         if(length(matches)>0) {
+            shared_words <- shared_words + 1
             if (count==0) {
                 matches_df <- matched_df(name, matches, names, shared_words, 
                     match_idfs)
