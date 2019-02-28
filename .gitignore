@@ -42,3 +42,6 @@ paper/.texpadtmp/
 
 # .DS_Store
 *.DS_Store
+
+# Scratch files
+*scratch.R 
