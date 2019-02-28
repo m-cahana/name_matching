@@ -49,7 +49,8 @@ df <-
     leases %>% 
     st_set_geometry(NULL) %>% 
     count(grnte_al) %>% 
-    rename(name = grnte_al)
+    rename(name = grnte_al) %>% 
+    as_tibble()
 
 output_file <- file.path(ddir, 'matches', 'leases_name_matches.csv')
 
@@ -65,7 +66,8 @@ df <-
 	leases %>% 
 	st_set_geometry(NULL) %>% 
 	rename(address = grnte_ad, name = grnte_al) %>% 
-	select(name, address) 
+	select(name, address) %>% 
+	as_tibble()
 
 output_file <- file.path(ddir, 'matches', 'leases_address_matches.csv')
 
