@@ -31,17 +31,20 @@ library(readxl)
 # data read in
 #===========
 
-desc <- read_fst(file.path(rdir, 'pden_desc-2017-04-30.fst')) %>% 
-        mutate(api_no = str_replace_all(api_no, '-', '') %>% 
-        stri_pad_right(14, 0)) %>% 
-        select(api_no, curr_oper_id, curr_oper_no, curr_oper_name)
+desc <- 
+  read_fst(file.path(rdir, 'pden_desc-2018-09-26.fst'), 
+    columns = c("api_no", "curr_oper_id", "curr_oper_no", "curr_oper_name")) %>% 
+  mutate(api_no = str_replace_all(api_no, '-', '') %>% 
+  stri_pad_right(14, 0))
 
-modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) %>% 
-    select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
-    inner_join(desc, by='api_no')
+modeled <- 
+  readRDS(file.path(rdir, 'modeled_prices.Rds')) %>% 
+  select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
+  inner_join(desc, by='api_no')
 
-cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
-    select(curr_oper_name, replacement)
+cleaned_300 <- 
+  read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
+  select(curr_oper_name, replacement)
 
 #===========
 # operator name selection
@@ -82,32 +85,53 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
     'RONALD', 'LARRY', 'DONALD', 'RALPH', 'PIPE', 'FRANK', 'SALES', 'KENNETH', 
     'DON', 'RAY',  'HAROLD', 'DALE', 'MARY')
 
+# words that signify a name is a company
+company <-
+  c('ACQUISITION', 'ENERG', 'RESOURCE', 'OG', 'O & G', 'O&G', 'EXPL', '\\sLAND', 
+    'OPERAT', 'SERVICES', '\\sOIL', 'PROPERTIES', '\\sEP', 'ASSOC', 'PETR', 
+    'PARTNER', 'PROD', 'NATURAL', 'GEOSOUTHERN', 'MIDLAND', 'INTEREST', 
+    'ROYALT', 'BASIN', 'DRLG', 'DRILL', '\\sOIL', '\\sGAS', 'DEVELOPMENT', 
+    'HOLDING', 'RIVER', 'PERMIAN', 'CHALFANT', 'MGMT', 'MINERALS', 'CONTINENTAL',
+    'SOUTHWESTERN', 'E & P', 'E&P', '\\sGAS', 'GAS\\s', 'OIL\\s', 'CHURCH', 
+    'INVEST', 'CAPITAL', 'UNIVERSITY', '\\sLEASING', 'LTD', 'LIMITED', 
+    'MINERAL', 'TITLE', 'ENTERPRIS', 'FINANC', 'REFINERY', 
+    'LP', 'L&P', 'L & P', 'CRUDE', 'PROPERTIES', '\\sPROD', 'VALLEY', 
+    'REFINERY', 'STATES', 'PIPELINE', 'MINING', 'BROKER', 'LONESTAR') %>%
+  paste(., collapse = '|') %>%
+  regex(., ignore_case = TRUE)
+
 #===========
 # functions
 #===========
 
 clean_name  <- function(name, drop_common_words=FALSE) {
     words <- 
-        strsplit(name %>% str_replace_all(',', ' '), split=' ')[[1]] %>% 
-        str_replace_all('\\.', '') %>%
-        str_replace_all('-', ' ') %>%
-        str_replace_all("'", '') %>%
-        str_replace_all("\\)", '') %>%
-        str_replace_all("\\(", '') %>%
-        toupper()
+      name %>%
+      str_replace_all(",", " ") %>%
+      str_replace_all("-", " ") %>%
+      str_replace_all("[[:punct:]]", "") %>%
+      strsplit(split = " ") %>%
+      pluck(1) %>%
+      toupper
+       
     if (drop_common_words) {
         words <- words[!words %in% common_words]
     } else {
         words <- words[!words %in% c('', ' ')]
     }
     # letters <- words[nchar(words)==1] %>% paste(collapse = '-')
-    letters <- ifelse(nchar(words)>1, '', words) %>% 
-        paste(collapse = '-') %>% str_replace_all('--', ' ') %>% 
-        strsplit(split=' ') %>% .[[1]] %>% .[!nchar(.)<3] %>% 
-        .[str_count(.,"-")<2 | nchar(.)>3]
+    letters <- 
+      words[nchar(words) < 2] %>% 
+      paste(collapse = ' ') %>% 
+      str_replace_all('--', ' ') 
+
     # UNDOS BAG OF WORDS
-    words <- words[!nchar(words)==1] %>% append(letters) %>% 
-        paste(collapse=' ')
+    words <- 
+      words[!nchar(words)==1] %>% 
+      append(letters) %>% 
+      paste(collapse=' ') %>%
+      str_trim %>%
+      str_squish
     return(words)
 }
 
@@ -211,86 +235,248 @@ review_df <- function(df) {
 	return (df)
 }
 
+# function to identify last name and extract 
+extract_name <- function(names){
+    # download census list of surnames
+    surname_url <- "http://www2.census.gov/topics/genealogy/2000surnames/names.zip"
+    tf <- tempfile()
+    download.file(surname_url, tf, mode = "wb")     # download archive of surname data
+    files <- unzip(tf, exdir = tempdir())  # unzips and returns a vector of file names
+    surnames <- 
+      read_csv(files[grepl("\\.csv$", files)]) %>%
+      mutate(IsLast = TRUE)
+
+    male_first <- 
+      "https://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/areas/nlp/corpora/names/male.txt" %>%
+      read_delim(delim = " ") %>%
+      select(first_name = 1) %>%
+      filter(first_name != "#")
+
+    female_first <-
+    "https://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/areas/nlp/corpora/names/female.txt" %>%
+      read_delim(delim = " ") %>%
+      select(first_name = 1) %>%
+      filter(first_name != "#")
+
+    first_names <- 
+      bind_rows(female_first, male_first) %>%
+      unique %>%
+      mutate(first_name = str_to_upper(first_name), 
+        IsFirst = TRUE) 
+
+    names <- tibble(name = names)
+
+    # split name and identify which parts are a first name and which are last
+    split_name <-
+      names %>%
+      filter(!str_detect(name, company)) %>%
+      mutate(name = str_to_upper(name), 
+        name_split = str_split(name, " ")) %>%
+      unnest(name_split) %>%
+      left_join(select(surnames, name_split = name, IsLast)) %>%
+      left_join(select(first_names, name_split = first_name, IsFirst)) %>%
+      replace_na(list(IsLast = FALSE, IsFirst = FALSE)) %>%
+      group_by(name, IsLast, IsFirst) %>%
+      arrange(name_split) %>%
+      filter(row_number() == 1) %>%
+      ungroup 
+
+    # split up name based on what is categorized as
+    split_name <- 
+      split_name %>%
+      mutate(last_name = case_when(
+            IsLast & !IsFirst ~ name_split, 
+            IsLast & IsFirst ~ name_split, 
+            !IsLast & IsFirst ~ str_replace(name, name_split, ""), 
+            TRUE ~ NA_character_), 
+        first_name = case_when(
+            IsLast & !IsFirst ~ str_replace(name, name_split, ""), 
+            IsLast & IsFirst ~ str_replace(name, name_split, ""), 
+            !IsLast & IsFirst ~ name_split, 
+            TRUE ~ NA_character_)) %>%
+      arrange(name, -IsLast, -IsFirst) %>%
+      group_by(name) %>%
+      filter(row_number() == 1) %>%
+      ungroup
+     
+
+    # extract initials and store as a list column
+    split_name <-
+      split_name %>%
+      select(-IsFirst, -IsLast) %>%
+      mutate_all(funs(str_squish(str_trim(.)))) %>%
+      mutate(initials = str_split(first_name, " ")) %>%
+      group_by(name) %>%
+      mutate(initials = list(str_extract(pluck(initials, 1), ".{1}")), 
+        initials = if_else(nchar(first_name) <= 2, list(first_name), initials)) %>%
+      mutate(first_name = str_replace(first_name, "\\sJR$", ""), 
+        last_name = str_replace(last_name, "\\sJR$", "")) %>%
+      ungroup %>%
+      right_join(names)
+
+    return(split_name)
+}
+
+match_first_name <- function(names, clean_names){
+    split_names <- 
+      extract_name(clean_names) %>%
+      rename(clean_name = name) %>%
+      bind_cols(name = names, .) 
+
+    # filter out company names
+    company_names <- 
+      filter(split_names, is.na(last_name)) %>%
+      select(name, clean_name)
+
+    # create pairs of names we want to check based on if they have the same
+      # last name
+      # Check if initials are a match if the first name has more than one word
+      # or if it has less than 4 characters 
+      # (ie we don't want to match john smith to jake smith)
+    human_names <- 
+      filter(split_names, !is.na(last_name)) %>%
+      mutate(id = row_number()) %>%
+      group_by(id) %>%
+      mutate(check_initials = length(str_split(first_name, " ")[[1]]) > 1 | 
+        nchar(first_name) < 4) %>%
+      ungroup 
+
+    human_names1 <-
+      human_names %>%
+      setNames(paste0(colnames(.), "1")) %>%
+      rename(last_name = last_name1)
+   
+   # full_join human names with itself
+      # check if bag of words containing first initial of each word in the first
+      # name matches
+      # then do string dist on first names
+    human_names_match <-
+      human_names %>%
+      full_join(human_names1) %>%
+      filter(id < id1) %>%
+      mutate(InitialMatch = map2_lgl(initials, initials1, setequal), 
+        InitialMatch = if_else(check_initials | check_initials1, 
+            InitialMatch, FALSE))
+
+    return(list(human = human_names_match, company = company_names))
+}
+
 match_names_stringdist <- function(names, clean_names, 
     method='jw', threshold=0.25) {
 
-    count <- 0
-    while (length(clean_names)>0) {
+    # first identify which names are human names vs company names
+    human_matches_all <- match_first_name(names, clean_names)
+    human_matches <-
+      human_matches_all %>%
+      pluck("human") %>%
+      mutate(dist_score = stringdist(first_name, first_name1, 
+            method = method, p = 0)) %>%
+      filter(dist_score <= threshold | InitialMatch) %>%
+      mutate(dist_score = if_else(InitialMatch, NA_real_, dist_score), 
+        method = if_else(InitialMatch, "initials", 
+            paste(method, "first names"))) %>%
+      select(name, match = name1, dist_score, method)
 
-        c_name <- clean_names[1]
-        f_name <- names[1]
+    company_names <- 
+      pluck(human_matches_all, "company") %>%
+      filter(clean_name != "")
 
-        if (c_name=='') {
-            clean_names <- clean_names[-1]
-            names <- names[-1]
+    # now loop through the company names
+    df <- tibble()
+    all_names <- tibble(name = names, clean_name = clean_names)
+    i <- 0
+    while (nrow(company_names) > 0) {
+        i <- i + 1
+        print(i)
+
+        c_name <- company_names$clean_name[1]
+        f_name <- company_names$name[1]
+        all_names <- filter(all_names, name != f_name)
+
+        if (c_name == "") {
+            all_names <- filter(all_names, name != f_name)
             next
         }
 
-        matrix <- stringdistmatrix(c_name, 
-            clean_names, method=method, p=0)
+        match <-
+          all_names %>%
+          mutate(c_name = c_name, 
+            f_name = f_name, 
+            dist_score = stringdist(c_name, clean_name, method = method)) %>%
+          filter(dist_score < threshold) %>%
+          select(name, match = f_name, dist_score)
 
-        match_indices <- c()
-        match_names <- c()
-        dist_scores <- c()
+        df <- bind_rows(df, match)
 
-        for (i in 1:length(matrix)) {
-            if (matrix[i]<=threshold & i>1) {
-                match_indices <- c(match_indices,i)
-                match_names <- c(match_names, names[i])
-                dist_scores <- c(dist_scores, matrix[i])
-            } 
-        }
-        if(length(match_indices)>0) {
-            if (count==0){
-                df <- tibble(name = rep(f_name, length(match_indices)), 
-                    match = match_names, 
-                    dist_score =  dist_scores)
-            } else {
-                new <- tibble(name = rep(f_name, length(match_indices)),
-                    match = match_names, 
-                    dist_score =  dist_scores)
-                df <- 
-                    df %>% 
-                    bind_rows(new)
-            }
-            count <- count + 1
-        }
-
-        clean_names <- clean_names[-1]
-        names <- names[-1]
+        company_names <- company_names[-1, ]
     }
+
+    df <- 
+      df %>%
+      mutate(method = method) %>%
+      bind_rows(human_matches)
+
     return(df)
 }
 
 match_names_shared_word <- function(names, clean_names) {
-    count <- 0
-    bad_names <- c()
-    words <- get_words(names)
-    while (length(words)>0){
-        bag <- words[[1]]
-        name <- names[1]
-        clean_name <- clean_names[1]
-        matches <- get_matches(words, bag)
-        if(length(matches)>0) {
-            if (count==0) {
-                df <- matched_df(name, matches, names)
-            } else {
-                df <- 
-                    df %>% 
-                    bind_rows(matched_df(name, matches, names)) 
-            }
-            count <- count + 1
-            words <- words[-1]
-            names <- names[-1]
-            clean_names <- clean_names[-1]
-        } else {
-            bad_names <- c(bad_names, names[1])
-            words <- words[-1]
-            names <- names[-1]
-            clean_names <- clean_names[-1]
-        }
+    # clean human names first
+    # modify the get_matches function to return the match!!
+    human_matches_all <- match_first_name(names, clean_names)
+
+    tic()
+    human_matches <-
+      human_matches_all %>%
+      pluck("human") %>%
+      group_by(id, id1) %>%
+      mutate(bag = str_split(first_name, " "), 
+        bag = bag[[1]][!(bag %in% common_words)], 
+        bag1 = str_split(first_name1, " "), 
+        bag1 = bag1[[1]][!(bag %in% common_words)]) %>%
+      mutate(shared = length(intersect(bag, bag1))) %>%
+      filter(shared > 0 | InitialMatch) %>%
+      mutate(method = if_else(InitialMatch, "initials", "shared word first names")) %>%
+      ungroup %>% 
+      select(name, match = name1, method)
+    toc()
+
+    company_names <- 
+      pluck(human_matches_all, "company") %>%
+      filter(clean_name != "") %>%
+      group_by(name) %>%
+      mutate(bag = str_split(name, " "), 
+        bag = list(bag[[1]][!(bag %in% common_words)])) %>%
+      ungroup
+
+    words <- 
+      tibble(name = names, clean_name = clean_names) %>%
+      group_by(name) %>%
+      mutate(bag = str_split(name, " "), 
+        bag = list(bag[[1]][!(bag %in% common_words)])) %>%
+      ungroup
+
+    df <- tibble()
+    while (nrow(company_names)>0){
+       bag <- company_names$bag[[1]]
+       match <- company_names$name[1]
+       words <- filter(words, name != match)
+       matches <- get_matches(words$bag, bag)
+       
+       if(length(matches)>0) {
+            df <- bind_rows(df, matched_df(match, matches, names))
+       }
+
+       company_names <- company_names[-1, ]
+       count <- count + 1
+       print(count)
     }
-    return (list(df, bad_names))
+    
+    df <- 
+      df %>%
+      mutate(method = "shared word") %>%
+      bind_rows(human_matches)
+
+    return(df)
 }
 
 match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {
@@ -396,9 +582,9 @@ clean_names <-
     pull()
 
 tic()
-name_map_shared_word <- match_names_shared_word(names, clean_names) %>% .[[1]]
+name_map_shared_word <- match_names_shared_word(names, clean_names)
 toc()
-
+stop("check")
 #===========
 # jaro distance
 #===========
