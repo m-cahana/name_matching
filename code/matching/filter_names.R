@@ -23,23 +23,10 @@ source(file.path(root, "data.R"))
 #===========
 
 filter_names <- function(name_matches, address_matches, output_file) {
-	#===========
-	# find double matches
-	#===========
-
-	double_matches <- 
-		name_matches %>% 
-		inner_join(address_matches, by=c('name','match')) %>% 
-		select(-c(method.x, method.y, score)) %>% 
-	    mutate(keep = 1)
-
-	#===========
-	# remove doubles from name matches
-	#===========
-
 	name_matches <- 
 		name_matches %>% 
-		left_join(double_matches, by=c('name', 'match'))
+		left_join(address_matches, by=c('name','match')) %>% 
+	    mutate(keep = if_else(!is.na(address), 1, as.double(NA)))
 
 	write_csv(name_matches, output_file)
 }
