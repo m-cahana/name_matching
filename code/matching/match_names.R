@@ -383,7 +383,7 @@ match_names <- function(df, output_file) {
     print('cosine similarity')
     tic()
     name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-        threshold=0.3)
+        threshold=0.4)
     toc()
 
     #===========
@@ -429,7 +429,8 @@ match_names <- function(df, output_file) {
 
     print('jaro distance')
     tic()
-    name_map_jaro <- match_names_stringdist(names, clean_names, threshold = 0.3)
+    name_map_jaro <- match_names_stringdist(names, clean_names, 
+        threshold = 0.15)
     toc()
 
     #===========
