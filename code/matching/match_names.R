@@ -136,7 +136,7 @@ get_words  <- function(names, drop_common_words = TRUE) {
 
 matched_df <- function(name, matches, names, num, match_idfs) {
     df <- tibble(name = rep(name, length(matches)), 
-        match = names[matches], shared_words = num, min_idf = match_idfs)
+        match = names[matches], shared_words = num, max_idf = match_idfs)
     return (df)
 }
 
@@ -320,7 +320,7 @@ extract_idf <- function(word, idfs) {
         idfs %>% 
         filter(str_detect(name, word)) %>% 
         pull(idf) %>% 
-        min()
+        max()
     return (idf)
 }
 
@@ -337,7 +337,7 @@ shared_word_stats <- function(name, match, idfs, type = 'shared_words') {
         } else {
             return_val <- 0
         }
-    } else if (type=='min_idf') {
+    } else if (type=='max_idf') {
         if (!is.null(matches)) {
             return_val <- extract_idf(matches, idfs)
         } else {
@@ -454,7 +454,7 @@ match_names <- function(df, output_file) {
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2, shared_words, min_idf) %>% 
+        select(a1, a2, shared_words, max_idf) %>% 
         rename(name = a1, match = a2) %>% 
         unique()
 
@@ -483,12 +483,12 @@ match_names <- function(df, output_file) {
     # shared word
     missing_shared <- 
         master %>%
-        filter(is.na(min_idf)) %>% 
+        filter(is.na(max_idf)) %>% 
         rowwise() %>% 
         mutate(shared_words = shared_word_stats(name, match, idfs)) %>% 
-        mutate(min_idf = 
-            shared_word_stats(name, match, idfs, type = 'min_idf')) %>% 
-        select(name, match, shared_words, min_idf)
+        mutate(max_idf = 
+            shared_word_stats(name, match, idfs, type = 'max_idf')) %>% 
+        select(name, match, shared_words, max_idf)
 
     print('getting missing cosine similarity')
 
@@ -546,16 +546,16 @@ match_names <- function(df, output_file) {
         left_join(missing_shared, by=c('name', 'match')) %>% 
         mutate(shared_words = if_else(is.na(shared_words.x), 
             shared_words.y, shared_words.x), 
-            min_idf = if_else(is.na(min_idf.x), 
-            min_idf.y, min_idf.x)) %>% 
-        select(name, match, shared_words, min_idf, cosine_similarity, 
+            max_idf = if_else(is.na(max_idf.x), 
+            max_idf.y, max_idf.x)) %>% 
+        select(name, match, shared_words, max_idf, cosine_similarity, 
             jw_distance) 
 
-    max_min_idf <- max(master %>% filter(min_idf!=Inf) %>% .$min_idf)
+    max_max_idf <- max(master %>% filter(max_idf!=Inf) %>% .$max_idf)
 
     master <- 
         master %>% 
-        mutate(min_idf = if_else(min_idf==Inf, max_min_idf, min_idf))
+        mutate(max_idf = if_else(max_idf==Inf, max_max_idf, max_idf))
 
     #===========
     # save output
