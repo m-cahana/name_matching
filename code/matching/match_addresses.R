@@ -169,7 +169,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		df %>% 
 		group_by(coded_address) %>% 
 		summarize(n = n_distinct(name)) %>% 
-		filter(n==1 | n>100) %>% 
+		filter(n==1) %>% 
 		pull(coded_address)
 
 	df <- 
