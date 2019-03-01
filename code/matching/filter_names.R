@@ -22,11 +22,15 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-filter_names <- function(name_matches, address_matches, output_file) {
+filter_names <- function(name_matches, address_matches, count, output_file) {
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by=c('name','match')) %>% 
-	    mutate(keep = if_else(!is.na(address), 1, as.double(NA)))
+	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
+	    left_join(count, by='name') %>% 
+	    left_join(count, by=c('match' = 'name')) %>% 
+	    mutate(n = n.x + n.y) # %>% 
+	    # select(-c(n.x, n.y))
 
 	write_csv(name_matches, output_file)
 }

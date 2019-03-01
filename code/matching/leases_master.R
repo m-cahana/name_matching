@@ -38,8 +38,11 @@ source(file.path(root, 'code', 'matching', 'filter_names.R'))
 # data read in
 #===========
 
-leases <- readRDS(file.path(rdir, 'leases', 'landtrac_tx.Rds'))
-already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
+leases <- 
+	readRDS(file.path(rdir, 'leases', 'landtrac_tx.Rds')) %>% 
+	st_set_geometry(NULL) %>% 
+	as_tibble()
+already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv')) 
 
 #===========
 # match names within modeled
@@ -47,10 +50,8 @@ already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
 
 df <- 
     leases %>% 
-    st_set_geometry(NULL) %>% 
     count(grnte_al) %>% 
-    rename(name = grnte_al) %>% 
-    as_tibble()
+    rename(name = grnte_al) 
 
 output_file <- file.path(ddir, 'matches', 'leases_name_matches.csv')
 
@@ -64,10 +65,8 @@ already_coded_addresses <-  pull(already_coded_addresses, address)
 
 df <- 
 	leases %>% 
-	st_set_geometry(NULL) %>% 
 	rename(address = grnte_ad, name = grnte_al) %>% 
-	select(name, address) %>% 
-	as_tibble()
+	select(name, address) 
 
 output_file <- file.path(ddir, 'matches', 'leases_address_matches.csv')
 
@@ -81,5 +80,9 @@ name_matches <- read_csv(file.path(ddir, 'matches', 'leases_name_matches.csv'))
 address_matches <- read_csv(file.path(ddir, 'matches', 
 	'leases_address_matches.csv'))
 output_file <- file.path(vdir, 'leases_name_matches.csv')
+count <- 
+	leases %>% 
+	rename(name = grnte_al) %>% 
+	count(name) 
 
-filter_names(name_matches, address_matches, output_file)
+filter_names(name_matches, address_matches, count, output_file)
