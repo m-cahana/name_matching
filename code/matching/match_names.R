@@ -66,7 +66,7 @@ standalone_words <- c('AMERICA', 'PERMIAN', 'MARCELLUS', 'UTICA',
     'HAYNESVILLE-BOSSIER', 'HAYNESVILLE', 'BOSSIER', 'BARNETT', 'WOODFORD', 
     'EAGLE', 'FORD', 'FAYETTEVILLE', 'NIOBRARA', 'BAKKEN', 'ANTRIM', 'CENTURY', 
     'WESTERN', 'WEST', 'NORTHERN', 'NORTH', 'SOUTH', 'SOUTHERN', 'EAST', 
-    'EASTERN')
+    'EASTERN', 'NEW', )
 
 #===========
 # functions
