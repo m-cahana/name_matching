@@ -104,12 +104,13 @@ company <-
 # functions
 #===========
 
-clean_name  <- function(name, drop_common_words=FALSE) {
+clean_name <- function(name, drop_common_words=FALSE) {
     words <- 
       name %>%
       str_replace_all(",", " ") %>%
       str_replace_all("-", " ") %>%
       str_replace_all("[[:punct:]]", "") %>%
+      str_replace_all("L L C", "") %>%
       strsplit(split = " ") %>%
       pluck(1) %>%
       toupper
@@ -238,7 +239,7 @@ review_df <- function(df) {
 # function to identify last name and extract 
 extract_name <- function(names){
     # download census list of surnames
-    surname_url <- "http://www2.census.gov/topics/genealogy/2000surnames/names.zip"
+    surname_url <- "http://www2.census.gov/topics/genealogy/2010surnames/names.zip"
     tf <- tempfile()
     download.file(surname_url, tf, mode = "wb")     # download archive of surname data
     files <- unzip(tf, exdir = tempdir())  # unzips and returns a vector of file names
@@ -424,51 +425,43 @@ match_names_shared_word <- function(names, clean_names) {
     # modify the get_matches function to return the match!!
     human_matches_all <- match_first_name(names, clean_names)
 
-    tic()
     human_matches <-
       human_matches_all %>%
       pluck("human") %>%
       group_by(id, id1) %>%
       mutate(bag = str_split(first_name, " "), 
-        bag = bag[[1]][!(bag %in% common_words)], 
-        bag1 = str_split(first_name1, " "), 
-        bag1 = bag1[[1]][!(bag %in% common_words)]) %>%
+        bag1 = str_split(first_name1, " ")) %>%
       mutate(shared = length(intersect(bag, bag1))) %>%
       filter(shared > 0 | InitialMatch) %>%
       mutate(method = if_else(InitialMatch, "initials", "shared word first names")) %>%
       ungroup %>% 
       select(name, match = name1, method)
-    toc()
 
     company_names <- 
       pluck(human_matches_all, "company") %>%
       filter(clean_name != "") %>%
       group_by(name) %>%
-      mutate(bag = str_split(name, " "), 
-        bag = list(bag[[1]][!(bag %in% common_words)])) %>%
+      mutate(bag = str_split(clean_name, " ")) %>%
       ungroup
 
     words <- 
       tibble(name = names, clean_name = clean_names) %>%
       group_by(name) %>%
-      mutate(bag = str_split(name, " "), 
-        bag = list(bag[[1]][!(bag %in% common_words)])) %>%
+      mutate(bag = str_split(clean_name, " ")) %>%
       ungroup
 
     df <- tibble()
     while (nrow(company_names)>0){
-       bag <- company_names$bag[[1]]
+       bag <- company_names$bag[1]
        match <- company_names$name[1]
        words <- filter(words, name != match)
        matches <- get_matches(words$bag, bag)
        
        if(length(matches)>0) {
-            df <- bind_rows(df, matched_df(match, matches, names))
+            df <- bind_rows(df, matched_df(match, matches, words$name))
        }
 
        company_names <- company_names[-1, ]
-       count <- count + 1
-       print(count)
     }
     
     df <- 
@@ -577,14 +570,15 @@ clean_names <-
     filter(!is.na(curr_oper_name)) %>% 
     distinct() %>% 
     rowwise() %>% 
-    mutate(curr_oper_name = clean_name(curr_oper_name, 
-        drop_common_words=T)) %>% 
+    mutate(curr_oper_name = clean_name(curr_oper_name, drop_common_words=T)) %>% 
     pull()
 
 tic()
 name_map_shared_word <- match_names_shared_word(names, clean_names)
 toc()
-stop("check")
+
+# make sure they share more than one letter!!
+
 #===========
 # jaro distance
 #===========
