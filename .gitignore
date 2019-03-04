@@ -3,6 +3,7 @@ paths.R
 *.Rproj*
 .Rhistory
 paper/.texpadtmp/
+code/scratch/*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
