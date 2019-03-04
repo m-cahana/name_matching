@@ -63,7 +63,12 @@ modeled <-
 #===========
 
 common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC', 
-    'ENERGY', 'OIL', 'GAS', '&', 'OPERATIONS', 'PRODUCTIONS', 'ENGY', 'ENERGY', 
+    'ENERGY', 'OIL', 'GAS', 'O&G', 'OG', '&', 'OPERATIONS', 'PRODUCTIONS', 
+    'ENGY', 'ENGINEERING', 'BOB', 'CONSULTING', 'ROYALTIES', 'EP', 
+    'LM', 'CHARLES', 'CRAIG', 'RESERVES', 'ROBERT', 'SCOTT', 'STEVEN', 
+    'HOLDING', 'ACQUISITION', 'CONSULTANTS', 'CONSULTANT', 'TRUST',
+    'GREG', 'LE', 'DIVERSIFIED', 
+    'ENERGY', 'ROYALTY', 'TEXAS', 'PETR', 'TOM', 'RANDY', 'PATRICIA', 'MARK', 
     'SERV', 'MINERAL', 'MIN', 'OPERATING', 'RESOURCES', 'LTD', 'LIMITED', 
     'WELL', 'OPERATOR', 'PRODUCTION', '', ' ', 'AND', 'THE', 'COMPANY', 'USA', 
     'PETROLEUM', 'JR', 'MANAGEMENT', 'MGMT', 'ET', 'AL', 'DRILLING', 'ETAL', 
@@ -84,6 +89,12 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
     'RICHARD', 'JAMES', 'DAVID', 'JAMES', 'HENRY', 'JACK', 'STEPHEN', 'THOMAS', 
     'RONALD', 'LARRY', 'DONALD', 'RALPH', 'PIPE', 'FRANK', 'SALES', 'KENNETH', 
     'DON', 'RAY',  'HAROLD', 'DALE', 'MARY')
+
+standalone_words <- c('AMERICA', 'PERMIAN', 'MARCELLUS', 'UTICA', 
+    'HAYNESVILLE-BOSSIER', 'HAYNESVILLE', 'BOSSIER', 'BARNETT', 'WOODFORD', 
+    'EAGLE', 'FORD', 'FAYETTEVILLE', 'NIOBRARA', 'BAKKEN', 'ANTRIM', 'CENTURY', 
+    'WESTERN', 'WEST', 'NORTHERN', 'NORTH', 'SOUTH', 'SOUTHERN', 'EAST', 
+    'EASTERN', 'NEW')
 
 # words that signify a name is a company
 company <-
@@ -117,6 +128,10 @@ clean_name <- function(name, drop_common_words=FALSE) {
        
     if (drop_common_words) {
         words <- words[!words %in% common_words]
+        all_drops <- words[!words %in% standalone_words]
+        if (length(all_drops)>0) {
+            words <- all_drops
+        }
     } else {
         words <- words[!words %in% c('', ' ')]
     }
@@ -472,43 +487,17 @@ match_names_shared_word <- function(names, clean_names) {
     return(df)
 }
 
-match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {
-    count <- 0
-    for (i in 1:dim(names)[1]) {
-        name <- names %>% 
-            slice(i) %>% 
-            select(name) %>% 
-            pull()
-        matches <- c()
-        cosine_sims <- c()
-        indices <- order(similarity_matrix[i,], decreasing=TRUE)[2:11]
-        for (index in indices) {
-            match <- 
-                names %>%
-                slice(index) %>% 
-                select(name) %>% 
-                pull()
-            cosine_sim <- similarity_matrix[i, index]
+match_names_cosine <- function(row, names, similarity_matrix, threshold=0.4) {
 
-            matches <- c(matches, match)
-            indices <- c(indices, index)
-            cosine_sims <- c(cosine_sims, cosine_sim)
-        }
-        if (count==0){
-            df <- 
-                tibble(name = rep(name,10), match = matches,
-                cosine_similarity = cosine_sims)
-        } else {
-            df <- 
-                df %>% 
-                bind_rows(tibble(name = rep(name,10), match = matches,
-                cosine_similarity = cosine_sims))
-        }
-        count <- count + 1
-    }
+    name <- names[row]
+    matches <- names[which(as.vector(similarity_matrix[row, ])>threshold)]
+    sims <- similarity_matrix[row,][as.vector(
+        similarity_matrix[row, ])>threshold]
+
     df <- 
-        df %>% 
-        filter(cosine_similarity>=threshold)
+        tibble(name = rep(name,length(matches)), match = matches, 
+            cosine_similarity = sims) %>% 
+        filter(name!=match)
     return (df)
 }
 
@@ -528,12 +517,9 @@ alpha_order <- function(name, match, order) {
 
 names <- 
     modeled %>% 
-    group_by(curr_oper_name) %>% 
-    summarize(n=n()) %>% 
+    count(curr_oper_name) %>% 
     arrange(desc(n)) %>%
     filter(!is.na(curr_oper_name)) %>% 
-    mutate(id = row_number()) %>%  
-    select(-n) %>% 
     rename(name = curr_oper_name) %>% 
     rowwise() %>% 
     mutate(clean_name = clean_name(name))  
@@ -547,11 +533,14 @@ tfidf = TfIdf$new()
 dtm_tfidf = fit_transform(dtm, tfidf)
 
 similarity_matrix = sim2(x = dtm_tfidf, method = "cosine", norm = "l2")
+names <- pull(names, name)
 
 tic()
-name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-    threshold=0.4)
+name_map_cosine_similarity <- pmap_df(list(seq(1,length(names))), 
+    match_names_cosine, names, similarity_matrix)
 toc()
+
+
 
 #===========
 # shared word
