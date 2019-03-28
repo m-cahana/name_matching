@@ -52,7 +52,8 @@ code_address_chunk <- function(address_chunk) {
 		rowwise() %>% 
 		mutate(coded_address = geocode(address, row)) %>% 
 		select(-c(n, row)) 
-	write_csv(address_chunk, file.path(ddir, 'coded_addresses.csv'), append=T)
+	write_csv(address_chunk, file.path(ddir, 'address_backups', 
+		'coded_addresses.csv'), append=T)
 }
 
 alpha_order <- function(name, match, order) {
@@ -107,7 +108,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		select(name, address, coded_address) 
 
 	write_csv(unique(select(po, address, coded_address)), 
-		file.path(ddir, 'coded_pos.csv'))
+		file.path(ddir, 'address_backups', 'coded_pos.csv'))
 
 	#===========
 	# geocode
@@ -156,8 +157,9 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 	# determine matches 
 	#===========
 
-	coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv')) %>% 
-		bind_rows(read_csv(file.path(ddir, 'coded_pos.csv')))
+	coded_addresses <- 
+		read_csv(file.path(ddir, 'address_backups', 'coded_addresses.csv')) %>% 
+		bind_rows(read_csv(file.path(ddir, 'address_backups', 'coded_pos.csv')))
 
 	df <- 
 		bind_rows(select(po, name, address), select(non_po, name, address)) %>% 

@@ -49,7 +49,8 @@ cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>%
     select(curr_oper_name, replacement)
 # named: nph_oper_addr
 load(file.path(rdir, 'addresses', 'nph_oper_addr-2017-04-30.Rdata'))
-already_coded_addresses <- read_csv(file.path(ddir, 'coded_addresses.csv'))
+already_coded_addresses <- read_csv(file.path(ddir, 'address_backups', 
+    'coded_addresses.csv'))
 
 #===========
 # match names within modeled
@@ -64,7 +65,7 @@ df <-
         if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
     select(-curr_oper_name) %>% 
     rename(name = replacement)
-output_file <- file.path(ddir, 'matches', 'modeled_name_matches.csv')
+output_file <- file.path(ddir, 'matches', 'names', 'modeled_name_matches.csv')
 
 match_names(df, output_file)
 
@@ -92,7 +93,8 @@ df <-
     left_join(desc, by='api_no') %>% 
     left_join(addresses_to_google, by='curr_oper_id') %>% 
     rename(name = curr_oper_name)
-output_file <- file.path(ddir, 'matches', 'modeled_address_matches.csv')
+output_file <- file.path(ddir, 'matches', 'addresses', 
+    'modeled_address_matches.csv')
 
 match_addresses(df, already_coded_addresses, output_file)
 
@@ -100,9 +102,21 @@ match_addresses(df, already_coded_addresses, output_file)
 # filter down name match list
 #===========
 
-name_matches <- read_csv(file.path(ddir, 'matches', 'modeled_name_matches.csv'))
-address_matches <- read_csv(file.path(ddir, 'matches', 
-	'modeled_address_matches.csv'))
-output_file <- file.path(vdir, 'modeled_name_matches.csv')
+name_matches <- read_csv(file.path(ddir, 'matches', 'names', 
+    'modeled_name_matches.csv'))
+address_matches <- read_csv(file.path(ddir, 'matches', 'addresses', 
+	'modeled_address_matches.csv')) %>% 
+    select(-method)
+output_file <- file.path(vdir, 'modeled_matches.csv')
+lease_count <- 
+    modeled %>% 
+    select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
+    inner_join(desc, by='api_no') %>% 
+    left_join(cleaned_300, by='curr_oper_name') %>% 
+    mutate(replacement = 
+        if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
+    select(-curr_oper_name) %>% 
+    rename(name = replacement) %>% 
+    count(name)
 
-filter_names(name_matches, address_matches, output_file)
+filter_names(name_matches, address_matches, lease_count, output_file)

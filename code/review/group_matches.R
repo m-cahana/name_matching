@@ -4,7 +4,7 @@
 
 #===========
 # INPUTS
-# operator_name_matches_desc_permits.xlsx
+# human reviewed match dataset
 #===========
 
 #===========
@@ -23,12 +23,6 @@ library(tidyverse)
 library(igraph)
 
 #===========
-# data read in
-#===========
-
-df <- read_csv(input_file)
-
-#===========
 # functions
 #===========
 
@@ -37,7 +31,7 @@ create_edge <- function(name, match) {
 	return (edge)
 }
 
-extract_group_name <- function(no) {
+extract_group_name <- function(no, cc) {
 	group_name <- 
 		cc %>% 
 		filter(cluster==no) %>% 
@@ -53,6 +47,14 @@ alpha_order <- function(name, match, order) {
     return(a1)
 }
 
+find_cluster <- function(operator_name) {
+	cluster <- 
+		cc %>% 
+		filter(name == operator_name) %>% 
+		pull(cluster) 
+	return (cluster)
+}
+
 graph_cluster <- function(cluster_edges, cluster_to_plot) {
 	cluster_edges <- 
 		cluster_edges %>%  
@@ -64,9 +66,25 @@ graph_cluster <- function(cluster_edges, cluster_to_plot) {
 		clusters$csize[cluster_to_plot], ' nodes', sep = ''))
 }
 
+
+#===========
+# data read in
+#===========
+
+df <- 
+	list.files(vdir, full.names = TRUE) %>% 
+	map_df(read_csv) %>% 
+	filter(keep == 1) %>% 
+	select(name, match)
+
 #===========
 # find connected components
 #===========
+
+# consider only matches marked as correct (1)
+df <- 
+	df %>% 
+	filter(keep == 1)
 
 edges <- unlist(map2(df$name, df$match, create_edge)) 
 
@@ -79,9 +97,9 @@ clusters <- clusters(g)
 membership <- clusters$membership
 
 cc <- 
-	as_tibble(c(names(membership))) %>% 
+	enframe(c(names(membership)), name = NULL) %>% 
 	rename(name = value) %>% 
-	bind_cols(as_tibble(membership)) %>%
+	bind_cols(enframe(membership, name = NULL)) %>%
 	rename(cluster = value)
 
 #===========
@@ -90,7 +108,7 @@ cc <-
 
 # determine group name to be the first name (by alphabetical order)
 # within a cluster of names 
-group_names <- sapply(seq(1,clusters$no), extract_group_name)
+group_names <- sapply(seq(1,clusters$no), extract_group_name, cc)
 
 # match group names (i.e. replacement names) to cluster ids
 distinct_cc <- 
@@ -106,18 +124,12 @@ cc <-
 	arrange(cluster, name)
 
 #===========
-# plot clusters
-#===========
-
-cluster_edges <- 
-	df %>% 
-	rowwise() %>% 
-	mutate(cluster = find_cluster(name)) 
-
-#===========
 # save output
 #===========
 
-saveRDS(cc, file = output_file)
+# note that for some reason write_csv outputs special characters
+# so write.csv used instead
+write.csv(cc, file.path(ddir, 'grouped_matches', 'all_groups.csv'), 
+	row.names = F)
 
 
