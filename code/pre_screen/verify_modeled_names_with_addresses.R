@@ -1,5 +1,5 @@
 # Created by Michael Cahana in mid Feb. 2018
-# Determines modeled name matches
+# Verifies certain name matches given an address match
 
 #===========
 # inputs: 
@@ -29,7 +29,7 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-source(file.path(root, 'code', 'functions', 'match_names.R'))
+source(file.path(root, 'code', 'functions', 'verify_names.R'))
 
 #===========
 # data read in
@@ -44,10 +44,16 @@ cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>%
     select(curr_oper_name, replacement)
 
 #===========
-# match names within modeled
+# verify name matches with addresses 
 #===========
 
-df <- 
+name_matches <- read_csv(file.path(ddir, 'matches', 'names', 
+    'modeled_name_matches.csv'))
+address_matches <- read_csv(file.path(ddir, 'matches', 'addresses', 
+	'modeled_address_matches.csv')) %>% 
+    select(-method)
+output_file <- file.path(vdir, 'modeled_matches.csv')
+lease_count <- 
     modeled %>% 
     select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
     inner_join(desc, by='api_no') %>% 
@@ -55,7 +61,7 @@ df <-
     mutate(replacement = 
         if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
     select(-curr_oper_name) %>% 
-    rename(name = replacement)
-output_file <- file.path(ddir, 'matches', 'names', 'modeled_name_matches.csv')
+    rename(name = replacement) %>% 
+    count(name)
 
-match_names(df, output_file)
+verify_names(name_matches, address_matches, lease_count, output_file)

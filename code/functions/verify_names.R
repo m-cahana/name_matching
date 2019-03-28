@@ -1,6 +1,5 @@
 # Modified by Michael Cahana in mid Feb. 2018
-# Filters out name matches determined echoed in address matches
-# To be called by master.csv
+# Verifies name matches determined echoed in address matches
 
 #===========
 # inputs: 
@@ -22,7 +21,7 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-filter_names <- function(name_matches, address_matches, lease_count, 
+verify_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
 	name_matches <- 
 		name_matches %>% 

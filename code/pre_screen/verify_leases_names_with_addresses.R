@@ -1,11 +1,10 @@
 # Created by Michael Cahana in mid Feb. 2018
-# Determines address matches for leases
+# Verifies certain name matches given an address match
 
 #===========
 # inputs: 
 #===========
 # landtrac_tx
-# coded_addresses.csv
 
 #===========
 # needed libraries
@@ -26,7 +25,7 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-source(file.path(root, 'code', 'functions', 'match_addresses.R'))
+source(file.path(root, 'code', 'functions', 'verify_names.R'))
 
 #===========
 # data read in
@@ -36,21 +35,19 @@ leases <-
 	readRDS(file.path(rdir, 'leases', 'landtrac_tx.Rds')) %>% 
 	st_set_geometry(NULL) %>% 
 	as_tibble()
-already_coded_addresses <- read_csv(file.path(ddir, 'address_backups', 
-	'coded_addresses.csv')) 
 
 #===========
-# match addresses 
+# verify name matches with addresses 
 #===========
 
-already_coded_addresses <-  pull(already_coded_addresses, address)
-
-df <- 
+name_matches <- read_csv(file.path(ddir, 'matches', 'names', 
+	'leases_name_matches.csv'))
+address_matches <- read_csv(file.path(ddir, 'matches', 'addresses', 
+	'leases_address_matches.csv'))
+output_file <- file.path(vdir, 'leases_matches.csv')
+lease_count <- 
 	leases %>% 
-	rename(address = grnte_ad, name = grnte_al) %>% 
-	select(name, address) 
+	rename(name = grnte_al) %>% 
+	count(name) 
 
-output_file <- file.path(ddir, 'matches', 'addresses', 
-	'leases_address_matches.csv')
-
-match_addresses(df, already_coded_addresses, output_file)
+verify_names(name_matches, address_matches, lease_count, output_file)

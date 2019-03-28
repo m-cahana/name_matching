@@ -25,7 +25,7 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-source(file.path(root, 'code', 'matching', 'functions', 'match_names.R'))
+source(file.path(root, 'code', 'functions', 'match_names.R'))
 
 #===========
 # data read in
