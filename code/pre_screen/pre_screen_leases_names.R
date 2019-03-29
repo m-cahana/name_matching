@@ -25,7 +25,7 @@ source(file.path(root, "data.R"))
 # functions
 #===========
 
-source(file.path(root, 'code', 'functions', 'verify_names.R'))
+source(file.path(root, 'code', 'functions', 'pre_screen_names.R'))
 
 #===========
 # data read in
@@ -50,4 +50,4 @@ lease_count <-
 	rename(name = grnte_al) %>% 
 	count(name) 
 
-verify_names(name_matches, address_matches, lease_count, output_file)
+pre_screen_names(name_matches, address_matches, lease_count, output_file)

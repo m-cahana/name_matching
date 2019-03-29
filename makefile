@@ -27,6 +27,8 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
+# all : FILL IN 
+
 # ===========================================================================
 # First-stage name match dependencies
 # ===========================================================================
