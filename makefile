@@ -28,7 +28,7 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-# all : FILL IN 
+all : $(DATA_gen)/grouped_matches/all_groups.csv 
 
 # ===========================================================================
 # First-stage name match dependencies
@@ -64,14 +64,14 @@ $(DATA_gen)/matches/addresses/leases_address_matches.csv: \
 $(DATA_rev)/modeled_matches.csv: \
 	$(DATA_raw)/pden_desc-2018-09-26.fst \
 	$(DATA_raw)/modeled_prices.Rds \
-	$(DATA_raw)/names_edited.xlsx \ 
+	$(DATA_raw)/names_edited.xlsx \
 	$(DATA_gen)/matches/addresses/modeled_address_matches.csv \
-	$(DATA_gen)/matches/names/modeled_name_matches.csv
+	$(DATA_gen)/matches/names/modeled_name_matches.csv 
 	Rscript $(CDIR_pre_screen)/pre_screen_modeled_names.R
 
 $(DATA_rev)/leases_matches.csv: \
 	$(DATA_raw)/leases/landtrac_tx.Rds \
-	$(DATA_gen)/matches/names/leases_name_matches.csv \ 
+	$(DATA_gen)/matches/names/leases_name_matches.csv \
 	$(DATA_gen)/matches/addresses/leases_address_matches.csv
 	Rscript $(CDIR_pre_screen)/pre_screen_leases_names.R
 
@@ -81,5 +81,5 @@ $(DATA_rev)/leases_matches.csv: \
 
 $(DATA_gen)/grouped_matches/all_groups.csv: \
 	$(DATA_rev)/leases_matches.csv \
-	$(DATA_rev)/modeled_matches.csv
+	$(DATA_rev)/modeled_matches.csv 
 	Rscript $(CDIR_grouping)/group_all_matches.R
