@@ -134,9 +134,9 @@ get_words  <- function(names, drop_common_words = TRUE) {
     return(l)
 }
 
-matched_df <- function(name, matches, names, num, match_idfs) {
+matched_df <- function(name, matches, names, num) {
     df <- tibble(name = rep(name, length(matches)), 
-        match = names[matches], shared_words = num, max_idf = match_idfs)
+        match = names[matches], shared_words = num)
     return (df)
 }
 
@@ -219,31 +219,24 @@ match_names_stringdist <- function(names, clean_names,
     return(df)
 }
 
-match_names_shared_word <- function(names, idfs, ...) {
+match_names_shared_word <- function(names, ...) {
     count <- 0
     bad_names <- c()
     words <- get_words(names, ...)
     while (length(words)>0){
         bag <- words[[1]]
         name <- names[1]
-        print(name)
         matches <- get_matches(words, bag)
-        match_idfs <- 
-            as.vector(sapply(matches[[2]], 
-                extract_idf, idfs))
-        shared_words <- as.vector(sapply(matches[[2]], 
-            str_count, '\\|'))
+        shared_words <- as.vector(sapply(matches[[2]], str_count, '\\|'))
         matches <- matches[[1]]
         if(length(matches)>0) {
             shared_words <- shared_words + 1
             if (count==0) {
-                matches_df <- matched_df(name, matches, names, shared_words, 
-                    match_idfs)
+                matches_df <- matched_df(name, matches, names, shared_words)
             } else {
                 matches_df <- 
                     matches_df %>% 
-                    bind_rows(matched_df(name, matches, names, shared_words, 
-                        match_idfs))
+                    bind_rows(matched_df(name, matches, names, shared_words))
             }
             count <- count + 1
             words <- words[-1]
@@ -398,20 +391,10 @@ match_names <- function(df, output_file) {
         distinct() %>% 
         pull()
 
-    idfs <- 
-        df %>% 
-        select(name) %>% 
-        separate_rows(name, sep = ' ') %>% 
-        mutate(name = str_replace_all(name, '[[:punct:]]', '')) %>%
-        unique() %>% 
-        filter(name != '') %>% 
-        rowwise() %>% 
-        mutate(idf = idf(df, name))
-
     print('shared word')
     tic()
     name_map_shared_word <- 
-        match_names_shared_word(names, idfs) %>% .[[1]]
+        match_names_shared_word(names) %>% .[[1]]
     toc()
 
     #===========
@@ -444,7 +427,7 @@ match_names <- function(df, output_file) {
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2,cosine_similarity) %>% 
+        select(a1, a2, cosine_similarity, method) %>% 
         rename(name = a1, match = a2) %>% 
         unique()
 
@@ -454,8 +437,8 @@ match_names <- function(df, output_file) {
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2, shared_words, max_idf) %>% 
-        rename(name = a1, match = a2) %>% 
+        select(a1, a2, shared_words) %>% 
+        rename(name = a1, match = a2, method) %>% 
         unique()
 
     name_map_jaro <- 
@@ -464,98 +447,15 @@ match_names <- function(df, output_file) {
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2, jw_distance) %>% 
+        select(a1, a2, jw_distance, method) %>% 
         rename(name = a1, match = a2) %>% 
         unique()
 
     master <- 
-        name_map_cosine_similarity1 %>% 
+        name_map_cosine_similarity %>% 
         full_join(name_map_shared_word, by = c('name', 'match')) %>%
-        full_join(name_map_jaro1, by = c('name', 'match')) %>% 
+        full_join(name_map_jaro, by = c('name', 'match')) %>% 
         filter(name!=match)  
-
-    #===========
-    # fill in missing scores
-    #===========
-
-    print('getting missing shared word')
-
-    # shared word
-    missing_shared <- 
-        master %>%
-        filter(is.na(max_idf)) %>% 
-        rowwise() %>% 
-        mutate(shared_words = shared_word_stats(name, match, idfs)) %>% 
-        mutate(max_idf = 
-            shared_word_stats(name, match, idfs, type = 'max_idf')) %>% 
-        select(name, match, shared_words, max_idf)
-
-    print('getting missing cosine similarity')
-
-    # cosine similarity
-    missing_cosine <- 
-        master %>% 
-        filter(is.na(cosine_similarity)) %>% 
-        ungroup() %>%
-        mutate(i = row_number())  
-
-    cosine_names <- 
-        c(pull(missing_cosine, name), pull(missing_cosine, match)) %>% 
-        sapply(clean_name, drop_common_words=T) 
-
-    it <- itoken(cosine_names, progressbar = FALSE)
-    v <- create_vocabulary(it) %>% prune_vocabulary()
-    vectorizer = vocab_vectorizer(v)
-
-    dtm <- create_dtm(it, vectorizer)
-    tfidf <- TfIdf$new()
-    dtm_tfidf <- fit_transform(dtm, tfidf)
-
-    similarity_matrix <- 
-        sim2(x = dtm_tfidf, method = "cosine", norm = "l2") %>% 
-        as.matrix() %>% 
-        as.data.table() 
-
-    tic()
-    missing_cosine <- 
-        missing_cosine %>% 
-        rowwise() %>% 
-        mutate(i2 = i + dim(.)[1]) %>% 
-        mutate(cosine_similarity = as.double(similarity_matrix[i, ..i2])) %>% 
-        select(name, match, cosine_similarity)
-    toc()
-
-    print('getting missing jaro distances')
-
-    # jaro
-    missing_jaro <- 
-        master %>% 
-        filter(is.na(jw_distance)) %>% 
-        mutate(jw_distance = stringdist(name, match, method='jw')) %>% 
-        select(name, match, jw_distance)
-
-    # fill 
-    master <-
-        master %>% 
-        left_join(missing_jaro, by=c('name', 'match')) %>% 
-        mutate(jw_distance = if_else(is.na(jw_distance.x), jw_distance.y, 
-            jw_distance.x)) %>% 
-        left_join(missing_cosine, by=c('name', 'match')) %>% 
-        mutate(cosine_similarity = if_else(is.na(cosine_similarity.x), 
-            cosine_similarity.y, cosine_similarity.x)) %>% 
-        left_join(missing_shared, by=c('name', 'match')) %>% 
-        mutate(shared_words = if_else(is.na(shared_words.x), 
-            shared_words.y, shared_words.x), 
-            max_idf = if_else(is.na(max_idf.x), 
-            max_idf.y, max_idf.x)) %>% 
-        select(name, match, shared_words, max_idf, cosine_similarity, 
-            jw_distance) 
-
-    max_max_idf <- max(master %>% filter(max_idf!=Inf) %>% .$max_idf)
-
-    master <- 
-        master %>% 
-        mutate(max_idf = if_else(max_idf==Inf, max_max_idf, max_idf))
 
     #===========
     # save output
