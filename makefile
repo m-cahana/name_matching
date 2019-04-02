@@ -83,3 +83,11 @@ $(DATA_gen)/grouped_matches/all_groups.csv: \
 	$(DATA_rev)/leases_matches.csv \
 	$(DATA_rev)/modeled_matches.csv 
 	Rscript $(CDIR_grouping)/group_all_matches.R
+
+# ===========================================================================
+# Check for clusters that refer to same entity
+# ===========================================================================
+
+$(DATA_rev)/group_name_matches.csv: \
+	$(DATA_gen)/grouped_matches/all_groups.csv 
+	Rscript $(CDIR_matching)/match_group_names.R 

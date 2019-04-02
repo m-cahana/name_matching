@@ -77,7 +77,11 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		name_matches <- 
 			pre_existing_name_matches %>% 
 			bind_rows(name_matches) %>% 
-			distinct(name, match, .keep_all = T)
+			distinct(name, match, .keep_all = T) %>% 
+			select(-n) %>% 
+			mutate(n = n.x + n.y) %>% 
+		    arrange(desc(n)) %>% 
+		    mutate(pct_coverage = cumsum(n)/sum(n)) 
 	}
 
 	# if we already have some group matches (that is, verified matches from 

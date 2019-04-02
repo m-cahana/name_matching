@@ -337,11 +337,11 @@ shared_word_stats <- function(name, match, idfs, type = 'shared_words') {
             return_val <- NA
         }
     }
-    return(return_val)
+    return (return_val)
 }
 
 match_names <- function(df, output_file, cosine_threshold =  0.4, 
-    jaro_threshold = 0.15) {
+    jaro_threshold = 0.15, write_csv = TRUE) {
 
     #=================================
     # ----------- matching -----------
@@ -456,8 +456,11 @@ match_names <- function(df, output_file, cosine_threshold =  0.4,
         filter(name!=match) 
 
     #===========
-    # save output
+    # save output or return dataframe
     #===========
-
-    write_csv(master, output_file)
+    if (write_csv) {
+        write_csv(master, output_file)
+    } else {
+        return (master)
+    }
 }
