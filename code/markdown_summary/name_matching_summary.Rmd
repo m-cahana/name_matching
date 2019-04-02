@@ -1,0 +1,115 @@
+---
+title: "Name Matching Summary"
+output:
+  html_document:
+    df_print: paged
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+
+```{r setup, warning = FALSE, message = FALSE, include = FALSE}
+
+#===========
+# standard setup
+#===========
+
+root <- getwd()
+while(basename(root) != "name_matching") {
+  root <- dirname(root)
+}
+source(file.path(root, "data.R"))
+
+#===========
+# needed libraries
+#===========
+library(tidyverse)
+library(knitr)
+
+#===========
+# data read in
+#===========
+
+group_name_matches <- read_csv(file.path(vdir, 'group_name_matches.csv'))
+modeled_matches <- read_csv(file.path(vdir, 'modeled_matches.csv'))
+leases_matches <- read_csv(file.path(vdir, 'leases_matches.csv'))
+
+lease_keeps <- 
+	leases_matches %>% 
+	filter(pct_coverage<=.95 & !is.na(keep)) %>% 
+	dim %>% 
+	.[1]
+
+lease_total <- 
+	leases_matches %>% 
+	filter(pct_coverage<=.95) %>% 
+	dim %>% 
+	.[1]
+
+if (lease_keeps==lease_total) {lease_done = TRUE} else (lease_done = FALSE)
+
+modeled_keeps <- 
+	modeled_matches %>% 
+	filter(pct_coverage<=.95 & !is.na(keep)) %>% 
+	dim %>% 
+	.[1]
+
+modeled_total <- 
+	modeled_matches %>% 
+	filter(pct_coverage<=.95) %>% 
+	dim %>% 
+	.[1]
+
+if (modeled_keeps==modeled_total) {
+	modeled_done = TRUE
+} else {
+	modeled_done = FALSE
+}
+
+grouped_name_keeps <- 
+	group_name_matches %>% 
+	filter(!is.na(keep)) %>% 
+	dim %>% 
+	.[1]
+
+group_name_total <- dim(group_name_matches)[1]
+
+if (grouped_name_keeps==group_name_total) {
+	grouped_done = TRUE
+} else {
+	grouped_done = FALSE
+}
+
+
+```
+
+### Modeled Review
+`r if(modeled_done){
+	paste("All **", modeled_keeps, 
+		"** potential matches that need review in order to 
+		acheive **95%* coverage of the match data have been reviewed.", 
+	sep = '')} else {
+	paste("Only **", modeled_keeps, "** potential matches have been reviewed, 
+		of the **", modeled_total, "** that need to be reviewed to achieve *95%* 
+		coverage of the match data.", sep = '')
+}`
+
+### Lease Review
+`r if(lease_done){
+	paste("All **", lease_keeps, 
+		"** potential matches that need review in order to 
+		acheive **95%* coverage of the match data have been reviewed.", 
+	sep = '')} else {
+	paste("Only **", lease_keeps, "** potential matches have been reviewed, 
+		of the **", lease_total, "** that need to be reviewed to achieve *95%* 
+		coverage of the match data.", sep = '')
+}`
+
+### Group Name Review
+`r if(grouped_done){
+	paste("All **", grouped_name_keeps, 
+		"** potential matches that need review have been reviewed.", 
+	sep = '')} else {
+	paste("Only **", grouped_name_keeps, "** potential matches have been 
+		reviewed, of the **", group_name_total, "** that need to be reviewed to 
+		ensure that all duplicate clusters are detected.", sep = '')
+}` 

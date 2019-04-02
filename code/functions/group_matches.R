@@ -1,4 +1,4 @@
-# Modified by Michael Cahana in early Dec. 2018
+# Created by Michael Cahana in early Dec. 2018
 # Groups operator names according to graph clusters
 # Assigns group name based on alphabetical order
 
@@ -56,18 +56,8 @@ find_cluster <- function(operator_name) {
 	return (cluster)
 }
 
-graph_cluster <- function(cluster_edges, cluster_to_plot) {
-	cluster_edges <- 
-		cluster_edges %>%  
-		filter(cluster == cluster_to_plot)
 
-	edges <- unlist(map2(cluster_edges$name, cluster_edges$match, create_edge)) 
-	g <- graph(edges, directed = FALSE)
-	plot(g, main = paste('Cluster ', cluster_to_plot, '\n', 
-		clusters$csize[cluster_to_plot], ' nodes', sep = ''))
-}
-
-group_matches <- function(df, output_file) {
+group_matches <- function(df, output_file, write_csv = TRUE) {
 	#===========
 	# data prep
 	#===========
@@ -124,7 +114,11 @@ group_matches <- function(df, output_file) {
 
 	# note that for some reason write_csv outputs special characters
 	# so write.csv used instead
-	write.csv(cc, output_file, row.names = F) 
+	if(write_csv) {
+		write.csv(cc, output_file, row.names = F) 
+	} else {
+		return (cc)
+	}
 }
 
 

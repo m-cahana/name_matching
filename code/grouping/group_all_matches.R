@@ -1,4 +1,4 @@
-# Modified by Michael Cahana in early Dec. 2018
+# Modified by Michael Cahana in late Mar. 2019
 # Groups all matches in reviewed data
 
 #===========
@@ -36,6 +36,8 @@ df <-
 
 output_file <- file.path(ddir, 'grouped_matches', 'all_groups.csv')
 
+#===========
+# group matches
+#===========
+
 group_matches(df, output_file)
-
-

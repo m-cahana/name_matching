@@ -1,4 +1,4 @@
-# Created by Michael Cahana in mid Feb. 2018
+# Created by Michael Cahana in mid Feb. 2019
 # Verifies certain name matches given an address match
 
 #===========
@@ -50,8 +50,7 @@ cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>%
 name_matches <- read_csv(file.path(ddir, 'matches', 'names', 
     'modeled_name_matches.csv'))
 address_matches <- read_csv(file.path(ddir, 'matches', 'addresses', 
-	'modeled_address_matches.csv')) %>% 
-    select(-method)
+	'modeled_address_matches.csv')) 
 output_file <- file.path(vdir, 'modeled_matches.csv')
 lease_count <- 
     modeled %>% 

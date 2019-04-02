@@ -49,3 +49,6 @@ paper/.texpadtmp/
 
 # make file locals
 *data.txt
+
+# name matching
+*.html

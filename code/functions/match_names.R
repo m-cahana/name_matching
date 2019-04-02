@@ -337,10 +337,11 @@ shared_word_stats <- function(name, match, idfs, type = 'shared_words') {
             return_val <- NA
         }
     }
-    return(return_val)
+    return (return_val)
 }
 
-match_names <- function(df, output_file) {
+match_names <- function(df, output_file, cosine_threshold =  0.4, 
+    jaro_threshold = 0.15, write_csv = TRUE) {
 
     #=================================
     # ----------- matching -----------
@@ -377,7 +378,7 @@ match_names <- function(df, output_file) {
     print('cosine similarity')
     tic()
     name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-        threshold=0.4)
+        threshold = cosine_threshold)
     toc()
 
     #===========
@@ -414,7 +415,7 @@ match_names <- function(df, output_file) {
     print('jaro distance')
     tic()
     name_map_jaro <- match_names_stringdist(names, clean_names, 
-        threshold = 0.15)
+        threshold = jaro_threshold)
     toc()
 
     #===========
@@ -423,31 +424,28 @@ match_names <- function(df, output_file) {
 
     name_map_cosine_similarity <- 
         name_map_cosine_similarity %>% 
-        mutate(method = 'tf-idf cosine') %>%  
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2, cosine_similarity, method) %>% 
+        select(a1, a2, cosine_similarity) %>% 
         rename(name = a1, match = a2) %>% 
         unique()
 
     name_map_shared_word <- 
         name_map_shared_word %>% 
-        mutate(method = 'shared word') %>% 
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
         select(a1, a2, shared_words) %>% 
-        rename(name = a1, match = a2, method) %>% 
+        rename(name = a1, match = a2) %>% 
         unique()
 
     name_map_jaro <- 
         name_map_jaro %>% 
-        mutate(method = 'jaro') %>% 
         rowwise() %>% 
         mutate(a1 = alpha_order(name, match, 1)) %>% 
         mutate(a2 = alpha_order(name,  match, 2)) %>% 
-        select(a1, a2, jw_distance, method) %>% 
+        select(a1, a2, jw_distance) %>% 
         rename(name = a1, match = a2) %>% 
         unique()
 
@@ -455,11 +453,14 @@ match_names <- function(df, output_file) {
         name_map_cosine_similarity %>% 
         full_join(name_map_shared_word, by = c('name', 'match')) %>%
         full_join(name_map_jaro, by = c('name', 'match')) %>% 
-        filter(name!=match)  
+        filter(name!=match) 
 
     #===========
-    # save output
+    # save output or return dataframe
     #===========
-
-    write_csv(master, output_file)
+    if (write_csv) {
+        write_csv(master, output_file)
+    } else {
+        return (master)
+    }
 }

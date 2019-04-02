@@ -1,4 +1,4 @@
-# Modified by Michael Cahana in mid Feb. 2018
+# Modified by Michael Cahana in late Mar. 2019
 # Verifies name matches determined echoed in address matches
 
 #===========
@@ -55,27 +55,38 @@ list_to_df_edge <- function(l) {
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
+
+	# verify name matches that have an address match, add in lease counts
+	# (avoiding double counting) and create cumulative percentage coverage
 	name_matches <- 
 		name_matches %>% 
-		left_join(address_matches, by=c('name','match')) %>% 
+		left_join(address_matches, by = c('name','match')) %>% 
 	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
-	    left_join(lease_count, by='name') %>% 
-	    left_join(lease_count, by=c('match' = 'name')) %>% 
+	    left_join(lease_count, by = 'name') %>% 
+	    left_join(lease_count, by = c('match' = 'name')) %>% 
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
+	    replace_na(list(n.x = 0, n.y = 0)) %>% 
 	    mutate(n = n.x + n.y) %>% 
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
 
+	# if we already did some human review on these matches, incorporate it
 	if (file.exists(output_file)) {
 		pre_existing_name_matches <- read_csv(output_file)
 		name_matches <- 
 			pre_existing_name_matches %>% 
 			bind_rows(name_matches) %>% 
-			distinct(name, match, .keep_all = T)
+			distinct(name, match, .keep_all = T) %>% 
+			select(-n) %>% 
+			mutate(n = n.x + n.y) %>% 
+		    arrange(desc(n)) %>% 
+		    mutate(pct_coverage = cumsum(n)/sum(n)) 
 	}
 
+	# if we already have some group matches (that is, verified matches from 
+	# other datasets, not just this one), incorporate those matches as well
 	if (file.exists(file.path(ddir, 'grouped_matches', 'all_groups.csv'))) {
 		reviewed_pairs <- read_csv(file.path(ddir, 'grouped_matches', 
 			'all_groups.csv'))
@@ -91,6 +102,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			bind_cols(enframe(membership, name = NULL)) %>%
 			rename(cluster = value)
 
+		# ensure clusters are complete (all possible edges drawn) such that 
+		# every match is covered
 		complete_clusters <- 
 			 connected_components %>% 
 			 split(.$cluster) %>% 
@@ -103,6 +116,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			create_edge)) 
 		current_graph <- graph(current_edges, directed=FALSE)
 
+		# find edges in name_matches that were already verified by the previous
+		# grouping
 		redundant_edges <- 
 			intersection(current_graph, complete_clusters) %>% 
 			E() %>% 
