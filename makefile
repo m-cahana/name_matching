@@ -28,7 +28,7 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-all : $(DATA_rev)/group_name_matches.csv 
+all : $(DATA_gen)/grouped_matches/grouped_groups.csv
 
 # ===========================================================================
 # First-stage name match dependencies
@@ -91,3 +91,13 @@ $(DATA_gen)/grouped_matches/all_groups.csv: \
 $(DATA_rev)/group_name_matches.csv: \
 	$(DATA_gen)/grouped_matches/all_groups.csv 
 	Rscript $(CDIR_matching)/match_group_names.R 
+
+# ===========================================================================
+# Group together duplicate clusters
+# ===========================================================================
+
+$(DATA_gen)/grouped_matches/grouped_groups.csv : \
+	$(DATA_gen)/grouped_matches/all_groups.csv \
+	$(DATA_rev)/group_name_matches.csv
+	Rscript $(CDIR_grouping)/group_grouped_clusters.R 
+

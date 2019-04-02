@@ -57,7 +57,7 @@ find_cluster <- function(operator_name) {
 }
 
 
-group_matches <- function(df, output_file) {
+group_matches <- function(df, output_file, write_csv = TRUE) {
 	#===========
 	# data prep
 	#===========
@@ -114,7 +114,11 @@ group_matches <- function(df, output_file) {
 
 	# note that for some reason write_csv outputs special characters
 	# so write.csv used instead
-	write.csv(cc, output_file, row.names = F) 
+	if(write_csv) {
+		write.csv(cc, output_file, row.names = F) 
+	} else {
+		return (cc)
+	}
 }
 
 
