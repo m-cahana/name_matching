@@ -19,6 +19,7 @@ CDIR_matching = $(CDIR)/matching
 CDIR_review = $(CDIR)/review
 CDIR_pre_screen = $(CDIR)/pre_screen
 CDIR_grouping = $(CDIR)/grouping
+CDIR_markdown_summary = $(CDIR)/markdown_summary
 ODIR = $(DIR)/output
 
 # data files
@@ -28,7 +29,7 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-all : $(DATA_gen)/grouped_matches/grouped_groups.csv
+all : $(CDIR_markdown_summary)/name_matching_summary.html
 
 # ===========================================================================
 # First-stage name match dependencies
@@ -100,4 +101,15 @@ $(DATA_gen)/grouped_matches/grouped_groups.csv : \
 	$(DATA_gen)/grouped_matches/all_groups.csv \
 	$(DATA_rev)/group_name_matches.csv
 	Rscript $(CDIR_grouping)/group_grouped_clusters.R 
+
+# ===========================================================================
+# Generate summary file
+# ===========================================================================
+
+$(CDIR_markdown_summary)/name_matching_summary.html : \
+	$(DATA_rev)/group_name_matches.csv \
+	$(DATA_rev)/modeled_matches.csv \
+	$(DATA_rev)/leases_matches.csv \
+	$(DATA_gen)/grouped_matches/grouped_groups.csv
+	Rscript $(CDIR_markdown_summary)/generate_name_matching_summary.R 
 
