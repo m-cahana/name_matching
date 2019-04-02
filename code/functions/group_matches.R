@@ -56,16 +56,6 @@ find_cluster <- function(operator_name) {
 	return (cluster)
 }
 
-graph_cluster <- function(cluster_edges, cluster_to_plot) {
-	cluster_edges <- 
-		cluster_edges %>%  
-		filter(cluster == cluster_to_plot)
-
-	edges <- unlist(map2(cluster_edges$name, cluster_edges$match, create_edge)) 
-	g <- graph(edges, directed = FALSE)
-	plot(g, main = paste('Cluster ', cluster_to_plot, '\n', 
-		clusters$csize[cluster_to_plot], ' nodes', sep = ''))
-}
 
 group_matches <- function(df, output_file) {
 	#===========

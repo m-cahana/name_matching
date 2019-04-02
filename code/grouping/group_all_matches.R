@@ -25,6 +25,7 @@ library(tidyverse)
 #===========
 
 source(file.path(root, 'code', 'functions', 'group_matches.R'))
+source(file.path(root, 'code', 'functions', 'match_names.R'))
 
 #===========
 # data read-in
@@ -36,6 +37,34 @@ df <-
 
 output_file <- file.path(ddir, 'grouped_matches', 'all_groups.csv')
 
+#===========
+# group matches
+#===========
+
 group_matches(df, output_file)
+
+#===========
+# identify potential "cluster of clusters" - multiple distinct clusters that
+# belong together in one cluster
+#===========
+
+# gather list of group names
+df <- 
+	read_csv(file.path(ddir, 'grouped_matches', 'all_groups.csv')) %>% 
+	count(group_name) %>% 
+	rename(name = group_name)
+
+output_file <- file.path(vdir, 'group_name_matches.csv') 
+
+# match group names
+match_names(df, output_file, cosine_threshold =  0.65)
+
+# remove pure shared word matches, add keep column
+df <- 
+	read_csv(output_file) %>% 
+	filter(!(is.na(cosine_similarity)) | !(is.na(jw_distance))) %>% 
+	mutate(keep = NA)
+
+write_csv(df, output_file)
 
 
