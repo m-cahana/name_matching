@@ -1,5 +1,5 @@
-# Modified by Michael Cahana in late Mar. 2019
-# Groups all matches in reviewed data
+# Modified by Michael Cahana in early Apr. 2019
+# Groups together clusters in grouped matches that refer to same entity
 
 #===========
 # INPUTS

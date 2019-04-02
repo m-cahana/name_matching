@@ -1,4 +1,4 @@
-# Modified by Michael Cahana in early Dec. 2018
+# Created by Michael Cahana in early Dec. 2018
 # Groups operator names according to graph clusters
 # Assigns group name based on alphabetical order
 
