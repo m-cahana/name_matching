@@ -28,7 +28,7 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-all : $(DATA_gen)/grouped_matches/all_groups.csv 
+all : $(DATA_rev)/group_name_matches.csv 
 
 # ===========================================================================
 # First-stage name match dependencies
