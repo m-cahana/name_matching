@@ -25,7 +25,7 @@ library(igraph)
 # functions
 #===========
 
-source(file.path(root, 'code', 'functions', 'plot_graphs.R'))
+source(file.path(root, 'code', 'functions', 'plot_clusters.R'))
 
 #===========
 # data read in
