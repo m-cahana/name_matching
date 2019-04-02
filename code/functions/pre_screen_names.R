@@ -60,13 +60,14 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# (avoiding double counting) and create cumulative percentage coverage
 	name_matches <- 
 		name_matches %>% 
-		left_join(address_matches, by=c('name','match')) %>% 
+		left_join(address_matches, by = c('name','match')) %>% 
 	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
-	    left_join(lease_count, by='name') %>% 
-	    left_join(lease_count, by=c('match' = 'name')) %>% 
+	    left_join(lease_count, by = 'name') %>% 
+	    left_join(lease_count, by = c('match' = 'name')) %>% 
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
+	    replace_na(list(n.x = 0, n.y = 0)) %>% 
 	    mutate(n = n.x + n.y) %>% 
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
