@@ -19,4 +19,6 @@ library(rmarkdown)
 # render markdown file
 #===========
 
-render(file.path(root, 'code', 'markdown_summary', 'name_matching_summary.Rmd'))
+render(file.path(root, 'code', 'markdown_summary', 'name_matching_summary.Rmd'), 
+	output_file = file.path(ddir, 'notifications', 
+		'name_matching_summary.html'))

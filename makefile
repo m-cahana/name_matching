@@ -29,7 +29,7 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-all : $(CDIR_markdown_summary)/name_matching_summary.html
+all : $(DATA_gen)/notifications/name_matching_summary.html
 
 # ===========================================================================
 # First-stage name match dependencies
@@ -106,7 +106,7 @@ $(DATA_gen)/grouped_matches/grouped_groups.csv : \
 # Generate summary file
 # ===========================================================================
 
-$(CDIR_markdown_summary)/name_matching_summary.html : \
+$(DATA_gen)/notifications/name_matching_summary.html : \
 	$(DATA_rev)/group_name_matches.csv \
 	$(DATA_rev)/modeled_matches.csv \
 	$(DATA_rev)/leases_matches.csv \
