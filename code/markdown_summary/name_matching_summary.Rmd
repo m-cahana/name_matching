@@ -45,7 +45,9 @@ lease_total <-
 	dim %>% 
 	.[1]
 
-if (lease_keeps==lease_total) {lease_done = TRUE} else (lease_done = FALSE)
+lease_left <- lease_total - lease_keeps
+
+if (lease_left==0) {lease_done = TRUE} else (lease_done = FALSE)
 
 modeled_keeps <- 
 	modeled_matches %>% 
@@ -59,11 +61,9 @@ modeled_total <-
 	dim %>% 
 	.[1]
 
-if (modeled_keeps==modeled_total) {
-	modeled_done = TRUE
-} else {
-	modeled_done = FALSE
-}
+modeled_left <- modeled_total - modeled_keeps
+
+if (modeled_left==0) {modeled_done = TRUE} else {modeled_done = FALSE}
 
 grouped_name_keeps <- 
 	group_name_matches %>% 
@@ -71,14 +71,11 @@ grouped_name_keeps <-
 	dim %>% 
 	.[1]
 
-group_name_total <- dim(group_name_matches)[1]
+grouped_name_total <- dim(group_name_matches)[1]
 
-if (grouped_name_keeps==group_name_total) {
-	grouped_done = TRUE
-} else {
-	grouped_done = FALSE
-}
+grouped_left <- grouped_name_total - grouped_name_keeps
 
+if (grouped_left==0) {grouped_done = TRUE} else {grouped_done = FALSE}
 
 ```
 
@@ -90,7 +87,8 @@ if (grouped_name_keeps==group_name_total) {
 	sep = '')} else {
 	paste("Only **", modeled_keeps, "** potential matches have been reviewed, 
 		of the **", modeled_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data.", sep = '')
+		coverage of the match data. \n \n **", modeled_left, 
+		"** matches left to review.",  sep = '')
 }`
 
 ### Lease Review
@@ -101,7 +99,8 @@ if (grouped_name_keeps==group_name_total) {
 	sep = '')} else {
 	paste("Only **", lease_keeps, "** potential matches have been reviewed, 
 		of the **", lease_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data.", sep = '')
+		coverage of the match data. \n \n **", lease_left, 
+		"** matches left to review.",  sep = '')
 }`
 
 ### Group Name Review
@@ -110,6 +109,7 @@ if (grouped_name_keeps==group_name_total) {
 		"** potential matches that need review have been reviewed.", 
 	sep = '')} else {
 	paste("Only **", grouped_name_keeps, "** potential matches have been 
-		reviewed, of the **", group_name_total, "** that need to be reviewed to 
-		ensure that all duplicate clusters are detected.", sep = '')
+		reviewed, of the **", grouped_name_total, "** that need to be reviewed 
+		to ensure that all duplicate clusters are detected. \n \n **", 
+		grouped_left, "** matches left to review.", sep = '')
 }` 

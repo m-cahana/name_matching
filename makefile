@@ -110,6 +110,7 @@ $(CDIR_markdown_summary)/name_matching_summary.html : \
 	$(DATA_rev)/group_name_matches.csv \
 	$(DATA_rev)/modeled_matches.csv \
 	$(DATA_rev)/leases_matches.csv \
-	$(DATA_gen)/grouped_matches/grouped_groups.csv
+	$(DATA_gen)/grouped_matches/grouped_groups.csv \
+	$(CDIR_markdown_summary)/name_matching_summary.Rmd
 	Rscript $(CDIR_markdown_summary)/generate_name_matching_summary.R 
 
