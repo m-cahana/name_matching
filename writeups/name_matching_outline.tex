@@ -158,7 +158,7 @@ Note that if we find matches that are indeed implied to be correct via cluster c
 
 At this stage, most likely some matches in dataset $d$ will have been verified by pre-screening, but not enough matches such that $95\%$ of observations represented by name/match pairs are covered. This is where human review comes in. 
 
-Matches will be separated by dataset and saved to the "reviewed\_data" folder, in ascending order of cumulative percentage coverage. A human must open all of these match datasets and code each row that doesn't already have a keep score assigned (keep = 1 if match, 0 if not), until they reach the row that achieves $95\%$ coverage. If Googling is required to reach a conclusion on the keep score, the reviewer should make note of that in the row as well. 
+Matches will be separated by dataset and saved to the "reviewed\_data" folder, in ascending order of cumulative percentage coverage (note that observation counts are not double-counted, so occasionally an observation count in a match pair might be 0 since it is repeated). A human must open all of these match datasets and code each row that doesn't already have a keep score assigned (keep = 1 if match, 0 if not), until they reach the row that achieves $95\%$ coverage. If Googling is required to reach a conclusion on the keep score, the reviewer should make note of that in the row as well. 
 
 \section{Grouping (Graph Theory Magic)}
 \label{sec:graph-theory}
