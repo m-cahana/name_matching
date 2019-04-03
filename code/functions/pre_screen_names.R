@@ -62,12 +62,6 @@ alpha_order <- function(name, match, order) {
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
 
-	reviewed_pairs <- 
-		list.files(vdir, full.names = TRUE) %>% 
-		.[.!=file.path(vdir, 'group_name_matches.csv')] %>% 
-		map_df(read_csv) %>% 
-		select(name, match, keep) 
-
 	# verify name matches that have an address match, add in lease counts
 	# (avoiding double counting) and create cumulative percentage coverage
 	name_matches <- 
@@ -86,11 +80,21 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
 
-	previous_non_pairs <- 
-		name_matches %>% 
-		inner_join(filter(reviewed_pairs, keep == 0), 
-			by = c('name', 'match')) %>% 
-		select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
+	reviewed_files <- 
+		list.files(vdir, full.names = TRUE) %>% 
+		.[.!=file.path(vdir, 'group_name_matches.csv')]
+
+	if (length(reviewed_files>0)) {
+		reviewed_pairs <- 
+			reviewed_files %>% 
+			map_df(read_csv) %>% 
+			select(name, match, keep) 
+		previous_non_pairs <- 
+			name_matches %>% 
+			inner_join(filter(reviewed_pairs, keep == 0), 
+				by = c('name', 'match')) %>% 
+			select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
+	}
 
 	# if we already did some human review on these matches, incorporate it
 	if (file.exists(output_file)) {
@@ -192,9 +196,13 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			distinct(name, match, .keep_all = T)
 	} 
 
-	write_csv(previous_non_pairs, file.path(ddir, 
-			'notifications', 'previous_non_pairs.csv'))
-	write_csv(inferred_matches, file.path(ddir, 
+	if (length(reviewed_files>0)) {
+		write_csv(previous_non_pairs, file.path(ddir, 
+				'notifications', 'previous_non_pairs.csv'))
+	}
+	if (file.exists(file.path(ddir, 'grouped_matches', 'all_groups.csv'))) {
+		write_csv(inferred_matches, file.path(ddir, 
 			'notifications', 'inferred_matches.csv'))
+	}
 	write_csv(name_matches, output_file)
 }
