@@ -48,6 +48,7 @@ output_file <- file.path(vdir, 'leases_matches.csv')
 lease_count <- 
 	leases %>% 
 	rename(name = grnte_al) %>% 
+	mutate(name = str_replace_all(name, '\xc9', 'E')) %>% 
 	count(name) 
 
 pre_screen_names(name_matches, address_matches, lease_count, output_file)

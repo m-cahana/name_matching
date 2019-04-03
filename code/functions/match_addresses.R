@@ -83,6 +83,8 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 			collapse='\\b|\\b'), 
 		'\\b', sep = '')
 
+	# extra po box number by ensuring number extracted is that by "PO BOX" or 
+	# some variation thereof
 	po_num_regex <- paste(
 		paste('\\b', paste(po_variations, collapse=' \\d+|\\b'), ' \\d+', 
 			sep = ''), 

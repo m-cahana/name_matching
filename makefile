@@ -29,87 +29,98 @@ DATA_rev = $(DATA)/reviewed_data
 
 INSTALL := $(shell Rscript $(CDIR)/package_installation.R)
 
-all : $(CDIR_markdown_summary)/name_matching_summary.html
+all : $(DATA_gen)/notifications/name_matching_summary.html
 
 # ===========================================================================
 # First-stage name match dependencies
 # ===========================================================================
 
 $(DATA_gen)/matches/names/modeled_name_matches.csv: \
+	$(CDIR_matching)/match_modeled_names.R \
 	$(DATA_raw)/pden_desc-2018-09-26.fst \
 	$(DATA_raw)/modeled_prices.Rds \
-	$(DATA_raw)/names_edited.xlsx
-	Rscript $(CDIR_matching)/match_modeled_names.R 
+	$(DATA_raw)/names_edited.xlsx 
+	Rscript $<
 
 $(DATA_gen)/matches/names/leases_name_matches.csv: \
-	$(DATA_raw)/leases/landtrac_tx.Rds
-	Rscript $(CDIR_matching)/match_leases_names.R 
+	$(CDIR_matching)/match_leases_names.R \
+	$(DATA_raw)/leases/landtrac_tx.Rds 
+	Rscript $<
 
 # ===========================================================================
 # First-stage address match dependencies
 # ===========================================================================
 
 $(DATA_gen)/matches/addresses/modeled_address_matches.csv: \
+	$(CDIR_matching)/match_modeled_addresses.R \
 	$(DATA_raw)/modeled_prices.Rds \
 	$(DATA_raw)/addresses/nph_oper_addr-2017-04-30.Rdata 
-	Rscript $(CDIR_matching)/match_modeled_addresses.R 
+	Rscript $<
 
 $(DATA_gen)/matches/addresses/leases_address_matches.csv: \
+	$(CDIR_matching)/match_leases_addresses.R \
 	$(DATA_raw)/leases/landtrac_tx.Rds 
-	Rscript $(CDIR_matching)/match_leases_addresses.R 
+	Rscript $<
 
 # ===========================================================================
 # Address/pre-checked matches as verification for name matches 
 # ===========================================================================
 
 $(DATA_rev)/modeled_matches.csv: \
+	$(CDIR_pre_screen)/pre_screen_modeled_names.R \
 	$(DATA_raw)/pden_desc-2018-09-26.fst \
 	$(DATA_raw)/modeled_prices.Rds \
 	$(DATA_raw)/names_edited.xlsx \
 	$(DATA_gen)/matches/addresses/modeled_address_matches.csv \
 	$(DATA_gen)/matches/names/modeled_name_matches.csv 
-	Rscript $(CDIR_pre_screen)/pre_screen_modeled_names.R
+	Rscript $<
 
 $(DATA_rev)/leases_matches.csv: \
+	$(CDIR_pre_screen)/pre_screen_leases_names.R \
 	$(DATA_raw)/leases/landtrac_tx.Rds \
 	$(DATA_gen)/matches/names/leases_name_matches.csv \
-	$(DATA_gen)/matches/addresses/leases_address_matches.csv
-	Rscript $(CDIR_pre_screen)/pre_screen_leases_names.R
+	$(DATA_gen)/matches/addresses/leases_address_matches.csv 
+	Rscript $<
 
 # ===========================================================================
 # Group all matches
 # ===========================================================================
 
 $(DATA_gen)/grouped_matches/all_groups.csv: \
+	$(CDIR_grouping)/group_all_matches.R \
 	$(DATA_rev)/leases_matches.csv \
 	$(DATA_rev)/modeled_matches.csv 
-	Rscript $(CDIR_grouping)/group_all_matches.R
+	Rscript $<
 
 # ===========================================================================
 # Check for clusters that refer to same entity
 # ===========================================================================
 
 $(DATA_rev)/group_name_matches.csv: \
+	$(CDIR_matching)/match_group_names.R \
 	$(DATA_gen)/grouped_matches/all_groups.csv 
-	Rscript $(CDIR_matching)/match_group_names.R 
+	Rscript $<
 
 # ===========================================================================
 # Group together duplicate clusters
 # ===========================================================================
 
 $(DATA_gen)/grouped_matches/grouped_groups.csv : \
+	$(CDIR_grouping)/group_grouped_clusters.R \
 	$(DATA_gen)/grouped_matches/all_groups.csv \
-	$(DATA_rev)/group_name_matches.csv
-	Rscript $(CDIR_grouping)/group_grouped_clusters.R 
+	$(DATA_rev)/group_name_matches.csv 
+	Rscript $<
 
 # ===========================================================================
 # Generate summary file
 # ===========================================================================
 
-$(CDIR_markdown_summary)/name_matching_summary.html : \
+$(DATA_gen)/notifications/name_matching_summary.html : \
+	$(CDIR_markdown_summary)/generate_name_matching_summary.R \
 	$(DATA_rev)/group_name_matches.csv \
 	$(DATA_rev)/modeled_matches.csv \
 	$(DATA_rev)/leases_matches.csv \
-	$(DATA_gen)/grouped_matches/grouped_groups.csv
-	Rscript $(CDIR_markdown_summary)/generate_name_matching_summary.R 
+	$(DATA_gen)/grouped_matches/grouped_groups.csv \
+	$(CDIR_markdown_summary)/name_matching_summary.Rmd 
+	Rscript $<
 
