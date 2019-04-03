@@ -1,0 +1,195 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+\usepackage{xcolor}
+
+\title{Name Matching}
+\author{Michael Cahana, Yixin Sun}
+\date{April 2019}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+The basic motivation for this project is that we need to use company names in various other research projects relating to oil & gas, and generally speaking company names don't come to us in great shape. They aren't normalized across states, and they often contain typos, or slight alterations, or both, such that two operator names that refer to the same entity are often non-identical. 
+This document outlines the name matching process established in the \href{https://github.com/m-cahana/name_matching}{name\_matching repository}. Note that from now on we will use "firm" to refer to either the operator or lessee name we are performing cleaning and matching. We use "DI alias" to refer to the cleaned up version of the firm name that is in the relevant DI dataset. 
+
+\section{Data}
+The following datasets are currently in use in our matching process:
+\begin{itemize}
+    \item DI Landtrac Leases: containing a 1:1 mapping of lessee names to lessee addresses
+    \item DI Flatfiles 
+    \begin{itemize}
+        \item NPH\_OPER\_ADDR: maps operator ids to operator addresses. Note that an operator usually has more than one unique operator address. 
+        \item pden\_desc: maps operator ids to operator names
+    \end{itemize}
+\end{itemize}
+
+\section{Procedure Outline}
+\subsection{First round}
+For each dataset $d \in \{leases, flatfiles\}$, in round $t =  1$:
+\begin{enumerate}
+    \item Clean firm names 
+    \begin{enumerate}
+    \item Normalize punctuation, spacing, and casing
+    \item Drop common words
+    \end{enumerate}
+    
+    \item Match unique firm names using three separate string comparison methods
+     \begin{enumerate}
+    \item Shared word - match one firm name to another if they share a word that isn't a common word
+    \item Cosine similarity - process firm names using Bag of words, apply a tf-idf (term frequency–inverse document frequency) weighting to each vector of words, and match firm word vectors using cosine similarity scores, with each potential match being declared a likely match if its score is or exceeds $0.4$ 
+     \item Jaro distance - compute the Jaro-Winkler distance between every firm name and every other firm name, declaring likely matches to be those name/match pairs with J-W scores at or below $0.15$. 
+    \end{enumerate}
+    
+    \item Clean firm addresses 
+    \begin{enumerate}
+    \item Geo-code standard addresses using Google Maps and the \href{https://cran.r-project.org/web/packages/googleway/googleway.pdf}{googleway} R library. Always save coded addresses into a backup file such that addresses aren't re-geo-coded with every iteration of name matching (geo-coding requires a Google API key and we'll be charged if we exceed 40,000 searches/month) 
+    \item Clean P.O boxes by normalizing typos/irregularities and processing all P.O. boxes in a standardized format
+    \end{enumerate}
+    
+    \item Match firm addresses, keeping only perfect matches
+
+    \item Pre-screen firm name matches using firm address matches
+    \begin{enumerate}
+    \item If two firms are declared to be a likely match via string comparison methods, and they also have a perfect address match, then they are marked as correct
+    \end{enumerate}
+    
+    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, with the $95\%$ representing the fraction of observations (of leases or wells) covered by reviewed name/match pairs relative to all observations covered in the name matches dataset, not the number of actual name/match pairs relative to all name/match pairs.
+    
+    \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$, and generate new firm groups using graph theory
+    
+    \item Determine whether any firm group names match one another using string comparison methods and subsequent human review
+    
+    \item Incorporate reviewed group name matches back into the original firm group graphs to ensure that duplicate clusters of firms (clusters referring tot he same entity) are joined together as one 
+\end{enumerate}
+
+\subsection{Later rounds}
+For each dataset $d \in \{leases, flatfiles, ... \}$, in round $t > 1$:
+\begin{enumerate}
+    \item Clean firm names 
+    
+    \item Match unique firm names using three separate string comparison methods
+    
+    \item Clean firm addresses 
+    
+    \item Match firm addresses, keeping only perfect matches
+
+    \item Pre-screen firm name matches using firm address matches
+    
+    \item Pre-screen firm name matches using firm groups from round $t - 1$
+    
+    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches
+    
+    \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$, and generate new firm groups using graph theory
+    
+    \item Determine whether any firm group names match one another using string comparison methods and subsequent human review
+    
+    \item Incorporate reviewed group name matches back into the original firm group graphs to ensure that duplicate clusters of firms (clusters referring to the same entity) are joined together as one 
+\end{enumerate}
+
+\section{Firm Name Cleaning}
+
+DI has already done some of cleaning for lessee and operator names.
+\begin{itemize}
+    \item landtrac leases: "alias grantee" is the standardized version of "grantee".
+    \item pden\_desc: "common oper name" is the standardized version of "reported oper name".
+\end{itemize}
+
+We use DI aliases as the firm name for subsequent cleaning steps, which basically entail normalizing punctuation, spacing, and casing, and dropping words deemed to be common (such as "PROD", "INC", "COMPANY", "INVESTMENTS", etc.) 
+
+\section{Firm Name Matching}
+
+Given a cleaned set of firm names, we apply three separate string matching algorithms to determine likely matches between names. All three algorithms loop through each firm name, and compare it to all other firm names, declaring two names to be a match if they satisfy a certain criterion. The three algorithms are as follows:
+\subsubsection{Shared Word}
+Transform firm names into \href{https://en.wikipedia.org/wiki/Bag-of-words_model}{bags of words}, and declare one name to match another if their bags share at least one word. For example, "JAMES L MARSHALL" would be matched to "MARSHALL RICHARD R" due to the shared "MARSHALL". This algorithm is our most conservative, and will likely catch a lot of false matches. But it is also likely to catch most true matches. When determined matches are outputted a $shared\_words$ score is included, which specifies the number of words shared between a name and its match. 
+\subsubsection{Jaro Distance}
+Calculate the Jaro-Winkler distance from every name to every other name using the \href{https://cra-n.r-project.org/web/packages/stringdist/stringdist.pdf}{stringdist} package. Declare a match pair to be two names with a distance less than or equal to a pre-determined threshold of $0.15$. This algorithm is useful for detecting typos. For example, it would determine that "SANDDRIDGE ENERGY INC." and "SANDRIDGE EXPLORATION AND PRODUCTION, LLC" to be a match. When determined matches are outputted a $jw_distance$ score is included, the score being simply the Jaro-Winkler distance between a name and its match. 
+\subsubsection{Cosine Similarity}
+Transform firm names into bag of word vectors using the \href{http://text2vec.org/}{text2vec package}, and use the \href{https://en.wikipedia.org/wiki/Tf\%E2\%80\%93idf}{tf-idf} method to weight words by relevance, down-weighting common words that haven't already been removed by the cleaning step. Then compute the \href{https://en.wikipedia.org/wiki/Cosine_similarity}{cosine similarity} between every pair of vectors. Declare a match pair to be two vectors with a cosine similarity greater than or equal to a pre-determined threshold of $0.4$. This algorithm captures the same types of matches as the shared word algorithm, except in a more elegant fashion. When determined matches are outputted a $cosine\_similarity$ score is included as well. \\
+
+With three sets of potential matches (one set for each method) in hand, the sets are combined together and duplicate matches are removed such that a single list of potential matches, along with relevant scores, is outputted.
+
+\section{Address Cleaning \& Matching}
+
+In parallel to the string cleaning/matching, we also match firms through addresses. 
+We first clean the list of the unique address names for punctuation and spacing. We ensure that all words are only one space apart, remove commas and periods, make all addresses uppercase, normalize all variations of PO BOX, keep only the first five letters of a zip code, etc.
+
+\subsection{P.O. boxes}
+Addresses flagged as P.O. boxes then undergo some further normalization before matches are determined, matches being only those P.O. box addresses that perfectly mirror one another. 
+
+Note that we generate a backup dataset of P.O. box normalizations such that we don't have to re-clean a P.O. box that has already been cleaned in a prior round. 
+\subsection{Geocoding}
+
+We standardize non-P.O. addresses by exploiting Google's name cleaning algorithms. Google proves a geocoding service which cleans up addresses rather well, and we have a Google API key that affords us 50,000 free address searches/month. Geocoded addresses are said to be a match if and only if they are a perfect match. 
+
+Note that like P.O. boxes, we generate a backup dataset of geocoded addresses such that we don't have to re-geo-code an address that has already been cleaned in a prior round. 
+
+\section{Pre-screening}
+
+\subsection{Verifying firm name matches using addresses}
+
+If two firms are declared to be a likely match via string comparison methods, and they also have a perfect address match, then they are marked as correct and don't require further human review. We do not declare firms with address matches but no name matches to be correct, since some firms may share an address that is a common business registry, or a common downtown high-rise containing hundreds of unrelated offices. 
+
+Note that if round $t > 1$, and we find that matches that are now verified using addresses were coded in a prior round by a human as incorrect, then we output these matches to the file "generated\_data/notifications/previous\_non\_pairs.csv" for the user to review if desired. 
+
+\subsection{Verifying firm name matches using firm groups from round $t - 1$}
+
+If round $t > 1$, then we utilize previously determined clusters of group matches to verify firm name matches that have already been marked as correct in prior rounds. Here we take clusters of group matches and expand them out to be complete, such that a cluster with nodes \{A,B,C\} and edges A-B, B-C is expanded to also contain the edge A-C. 
+
+The reason we expand clusters to be complete is so we can not only verify edges that were explicitly coded as correct in prior rounds, but also edges that were implied to be correct in prior rounds since they belong to the same cluster, but were never explicitly reviewed by a human. 
+
+Note that if we find matches that are indeed implied to be correct via cluster completeness, but weren't explicitly verified in previous rounds, then we outu these matches to the file "generated\_data/notifications/inferred\_matches.csv" for the user to review if desired. 
+
+\section{Human Review}
+
+At this stage, most likely some matches in dataset $d$ will have been verified by pre-screening, but not enough matches such that $95\%$ of observations represented by name/match pairs are covered. This is where human review comes in. 
+
+Matches will be separated by dataset and saved to the "reviewed\_data" folder, in ascending order of cumulative percentage coverage. A human must open all of these match datasets and code each row that doesn't already have a keep score assigned (keep = 1 if match, 0 if not), until they reach the row that achieves $95\%$ coverage. 
+
+\section{Grouping (Graph Theory Magic)}
+
+We want to group together matches under a shared name. For example, if the match datasets in "reviewed\_data" tell us that "Chesapeake" is matched to "Chesapeake Marcellus", and "Chesapeake Marcellus" is matched to "Chesapeake Utica", we want to map all three names to one common name (presumably "Chesapeake"). We do this using the R \href{https://cran.r-project.org/web/packages/igraph/igraph.pdf}{igraph} library. 
+
+If we were to construct a graph with the nodes "Chesapeake Marcellus", "Chesapeake Utica", and "Chesapeake", and edges between "Chesapeake"/"Chesapeake Marcellus" and "Chesapeake Marcellus"/"Chesapeake Utica", all three nodes are said to form a connected component (what igraph often refers to as a cluster). 
+
+This is essentially the graph theory magic we do, however for all matches in "reviewed\_data". Basically, we read in and combine all matches , then use igraph to form a massive graph of nodes and edges, with nodes being firm names and edges being name/match pairs. Our code then determines connected components and assigns every within a connected component the name of the operator that is first in alphabetical order within that component. \\
+
+The resulting dataset, titled "generated\_data/grouped\_matches/all\_groups.csv" will have a column for a firm name, and a column for the firm's assigned group name. 
+
+\section{Grouping Groups}
+
+\subsection{Determining group name matches}
+
+Here's edge case we'd like to account for: two distinct datasets (say leases and flatfiles) determine matches that form two distinct clusters, however both clusters refer to the same entity. Consider this example:
+
+Within leases we find matches between "Carrizo" and "Carrizo (Permian)", and within flatfiles we find matches between "Carrzo" and "Carrizo (Utica)". When we plug these matches into our graph theory process outlined in section 9, we'll have two clusters, one containing "Carrizo" and "Carrizo (Permian)", and the other containing "Carrzo" and "Carrizo (Utica)". We won't find an edge connecting these two clusters because we don't consider name matches across datasets (doing so would blow up the number of string comparisons we need to make significantly). Yet a human can easily tell that these two clusters belong together.
+
+To account for this edge case, after we generate group matches we also use the same string comparison methods outlined in section 5 to generate a list of potential group name matches. In the example above, the resulting list would contain one row suggesting "Carrizo" and "Carrizo (Utica)" to be a match. 
+
+A human must review this list (saved at "reviewed\_data/group\_name\_matches.csv") and effectively determine which clusters belong together. 
+
+\subsection{Incorporating group name matches}
+
+Once group name matches have been reviewed, they are applied onto our grouped data ("generated\_data/grouped\_matches/all\_groups.csv") such that duplicate clusters of firms come to share the same group name. The resulting output is then saved to the file "generated\_data/grouped\_matches/grouped\_groups.csv". 
+
+This is the dataset that the entire name matching process works towards. This dataset can be applied onto raw data (such as leases or flatfiles) to convert names that are effectively duplicates into names that are actually duplicates, and can be grouped as such. Note that this dataset will only contain group names for names that belong to groups of more than one member. That is, it doesn't contain all unique names in our raw datasets, it only contains unique names for firms that previously held multiple aliases.  
+
+\section{Subsequent Iterations}
+If/when datasetets are updated or other datasets come to be included, we can re-run the procedure outlined above (for $t > 1$). A makefile in the name\_matching repo specifies the procedure order, so all that's left for a human to do in terms of code changes is mirror the processes outlined in the makefile for older datasets, such that newer datasets are also cleaned, matched, etc. This should be pretty painless, it just involves some slight re-writing to ensure data is being read from the right place, and that the proper columns containing names and addresses are extracted. 
+
+Note that our code makes sure to never overwrite any human-reviewed match data, rather only append new matches that need first-time review. So in every subsequent round, a human will never have to re-review matches that they reviewed in round $t - 1$.  
+
+\end{document}
