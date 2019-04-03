@@ -53,8 +53,20 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
+alpha_order <- function(name, match, order) {
+    vec <- c(name, match)
+    a1 <- sort(vec)[order]
+    return(a1)
+}
+
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
+
+	reviewed_pairs <- 
+		list.files(vdir, full.names = TRUE) %>% 
+		.[.!=file.path(vdir, 'group_name_matches.csv')] %>% 
+		map_df(read_csv) %>% 
+		select(name, match, keep) 
 
 	# verify name matches that have an address match, add in lease counts
 	# (avoiding double counting) and create cumulative percentage coverage
@@ -63,7 +75,9 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		left_join(address_matches, by = c('name','match')) %>% 
 	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
 	    left_join(lease_count, by = 'name') %>% 
-	    left_join(lease_count, by = c('match' = 'name')) %>% 
+	    left_join(lease_count, by = c('match' = 'name')) %>%
+	    mutate(closeness = (1 - 
+	    	((max(n.x, n.y) - min(n.x, n.y))/max(n.x, n.y)))) %>% 
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
@@ -71,6 +85,12 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    mutate(n = n.x + n.y) %>% 
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
+
+	previous_non_pairs <- 
+		name_matches %>% 
+		inner_join(filter(reviewed_pairs, keep == 0), 
+			by = c('name', 'match')) %>% 
+		select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
 
 	# if we already did some human review on these matches, incorporate it
 	if (file.exists(output_file)) {
@@ -88,10 +108,10 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# if we already have some group matches (that is, verified matches from 
 	# other datasets, not just this one), incorporate those matches as well
 	if (file.exists(file.path(ddir, 'grouped_matches', 'all_groups.csv'))) {
-		reviewed_pairs <- read_csv(file.path(ddir, 'grouped_matches', 
+		reviewed_clusters <- read_csv(file.path(ddir, 'grouped_matches', 
 			'all_groups.csv'))
-		edges <- unlist(map2(reviewed_pairs$name, reviewed_pairs$group_name, 
-			create_edge)) 
+		edges <- unlist(map2(reviewed_clusters$name, 
+			reviewed_clusters$group_name, create_edge)) 
 		g <- graph(edges, directed=FALSE)
 		clusters <- clusters(g)
 		membership <- clusters$membership
@@ -125,14 +145,56 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			.$vnames %>% 
 			strsplit('\\|') %>% 
 			map_df(list_to_df_edge) %>% 
-			mutate(prior_check = 1)
+			rowwise() %>% 
+			mutate(a1 = alpha_order(name, match, 1)) %>% 
+	        mutate(a2 = alpha_order(name,  match, 2)) %>% 
+	        select(-c('name', 'match')) %>% 
+	        rename(name = a1, match = a2) %>% 
+	        mutate(prior_check = 1) 
 
 		name_matches <- 
 			name_matches %>% 
 			left_join(redundant_edges, by = c('name', 'match')) %>% 
-			mutate(keep = if_else(is.na(prior_check), keep, prior_check)) %>% 
+			mutate(keep = ifelse(is.na(prior_check), keep, prior_check)) %>% 
 			select(-prior_check)
+
+		# get list of inferred edges implied by completeness to be correct but
+		# not explicitly marked with keep == 1
+		inferred_matches <- 
+			redundant_edges %>% 
+			anti_join(filter(reviewed_pairs, keep ==1), 
+				by = c('name', 'match')) %>% 
+			select(-prior_check)
+
 	}
 
+	# write out notification files for pairs previously marked as incorrect
+	# but now known to be corrrect, and pairs inferred to be correct via cluster
+	# completeness but not actually verified by humans/addresses in  prior round
+	# ensure files aren't overwritten but just appended to
+	if(file.exists(file.path(ddir, 
+		'notifications', 'previous_non_pairs.csv'))) {
+		df <- read_csv(file.path(ddir, 
+			'notifications', 'previous_non_pairs.csv'))
+		previous_non_pairs <- 
+			df %>% 
+			bind_rows(previous_non_pairs) %>% 
+			distinct(name, match, .keep_all = T)
+	}
+
+	if(file.exists(file.path(ddir, 
+		'notifications', 'inferred_matches.csv'))) {
+		df <- read_csv(file.path(ddir, 
+			'notifications', 'inferred_matches.csv'))
+		inferred_matches <- 
+			df %>% 
+			bind_rows(inferred_matches) %>% 
+			distinct(name, match, .keep_all = T)
+	} 
+
+	write_csv(previous_non_pairs, file.path(ddir, 
+			'notifications', 'previous_non_pairs.csv'))
+	write_csv(inferred_matches, file.path(ddir, 
+			'notifications', 'inferred_matches.csv'))
 	write_csv(name_matches, output_file)
 }
