@@ -39,24 +39,25 @@ output_file <- file.path(ddir, 'grouped_matches', 'grouped_groups.csv')
 #===========
 # group clusters
 #===========
+# only group together clusters if cluster matches were identified
+if (dim(filter(group_name_matches, keep == 1))[1]>0) {
+	# group together cluster matches 
+	group_name_matches <- 
+		group_name_matches %>% 
+		group_matches('placeholder', write_csv = F) %>% 
+		rename(group_name = name, grouped_group_name = group_name) %>% 
+		select(-cluster)
 
-# group together cluster matches 
-group_name_matches <- 
-	group_name_matches %>% 
-	group_matches('test', write_csv = F) %>% 
-	rename(group_name = name, grouped_group_name = group_name) %>% 
-	select(-cluster)
-
-# rename cluster groups according to matching cluster group names
-df <- 
-	df %>% 
-	left_join(group_name_matches, by = 'group_name') %>% 
-	mutate(group_name = if_else(!is.na(grouped_group_name), 
-		grouped_group_name, group_name)) %>% 
-	select(-c(grouped_group_name, cluster)) %>% 
-	mutate(cluster = group_indices(., group_name)) %>% 
-	arrange(cluster, name)
-
+	# rename cluster groups according to matching cluster group names
+	df <- 
+		df %>% 
+		left_join(group_name_matches, by = 'group_name') %>% 
+		mutate(group_name = if_else(!is.na(grouped_group_name), 
+			grouped_group_name, group_name)) %>% 
+		select(-c(grouped_group_name, cluster)) %>% 
+		mutate(cluster = group_indices(., group_name)) %>% 
+		arrange(cluster, name)
+}
 #===========
 # save output
 #===========
