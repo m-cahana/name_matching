@@ -72,6 +72,8 @@ standalone_words <- c('AMERICA', 'PERMIAN', 'MARCELLUS', 'UTICA',
 # functions
 #===========
 
+# cleans a name by cleaning punctuation and dropping common words
+# returns a cleaned name
 clean_name  <- function(name, drop_common_words=FALSE) {
     words <- 
         strsplit(name %>% str_replace_all(',', ' '), split=' ')[[1]] %>% 
@@ -100,6 +102,8 @@ clean_name  <- function(name, drop_common_words=FALSE) {
     return(words)
 }
 
+# cleans a name by cleaning punctuation and dropping common words
+# returns a bag of words (BoW)
 get_words  <- function(names, drop_common_words = TRUE) {
     count <- 1
     for (name in names){ 
@@ -134,12 +138,15 @@ get_words  <- function(names, drop_common_words = TRUE) {
     return(l)
 }
 
+# creates a dataframe of names, matches, and shared words 
 matched_df <- function(name, matches, names, num) {
     df <- tibble(name = rep(name, length(matches)), 
         match = names[matches], shared_words = num)
     return (df)
 }
 
+# given a BoW, determines all other words that share a word with this BoW
+# and returns the words and their indices in the list of words
 get_matches <- function(words, bag, row_comparison = FALSE) {
     strings <- c()
     indices <- c()
@@ -168,6 +175,8 @@ get_matches <- function(words, bag, row_comparison = FALSE) {
     return (list(indices, strings))
 }
 
+# match names using stringdist methods (default Jaro-Winkler)
+# matches are only those with scores that are at or below the threshold
 match_names_stringdist <- function(names, clean_names, 
     method='jw', threshold=0.25) {
 
@@ -219,6 +228,7 @@ match_names_stringdist <- function(names, clean_names,
     return(df)
 }
 
+# match names if they share a word
 match_names_shared_word <- function(names, ...) {
     count <- 0
     bad_names <- c()
@@ -250,6 +260,8 @@ match_names_shared_word <- function(names, ...) {
     return (list(matches_df, bad_names))
 }
 
+# match names using cosine similarity scores, matches only being those that
+# are at or exceed the given threshold
 match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {
     count <- 0
     for (i in 1:dim(names)[1]) {
@@ -290,12 +302,15 @@ match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {
     return (df)
 }
 
+# order two words alphabetically, returning the word in the order (1 or 2) 
+# specified
 alpha_order <- function(name, match, order) {
     vec <- c(name, match)
     a1 <- sort(vec)[order]
     return(a1)
 }
 
+# determine inverse-document frequency of word in list of names
 idf <- function(names, word) {
     regex <- paste('\\b', word, '\\b', sep='')
     match_count <- 
@@ -308,6 +323,7 @@ idf <- function(names, word) {
     return (log(total_count/match_count))
 }
 
+# extract maximum idf score
 extract_idf <- function(word, idfs) {
     idf <- 
         idfs %>% 
@@ -315,29 +331,6 @@ extract_idf <- function(word, idfs) {
         pull(idf) %>% 
         max()
     return (idf)
-}
-
-shared_word_stats <- function(name, match, idfs, type = 'shared_words') {
-    words1 <- get_words(name, drop_common_words = F)
-    words2 <- get_words(match, drop_common_words = F)
-    matches <- get_matches(words1, words2, row_comparison = T)[[2]]
-    if (type=='shared_words') {
-        if (!is.null(matches)) {
-            return_val <- str_count(matches, '\\|') + 1 
-            if (identical(return_val, numeric(0))) {
-                return_val <- 0
-            }
-        } else {
-            return_val <- 0
-        }
-    } else if (type=='max_idf') {
-        if (!is.null(matches)) {
-            return_val <- extract_idf(matches, idfs)
-        } else {
-            return_val <- NA
-        }
-    }
-    return (return_val)
 }
 
 match_names <- function(df, output_file, cosine_threshold =  0.4, 

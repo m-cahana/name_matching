@@ -31,6 +31,7 @@ library(tictoc)
 # functions
 #===========
 
+# geocode address using googleway 
 geocode <- function(address, row) {
 	print(paste(row, address, sep=' - ')) 
 	google_output <- google_geocode(address = address, simplify = TRUE) 
@@ -42,6 +43,7 @@ geocode <- function(address, row) {
 	return (coded_address)
 }
 
+# geocode chunk of addresses
 code_address_chunk <- function(address_chunk) {
 	cat('\n ************ new chunk ************ \n') 
 	print(dim(address_chunk))
@@ -56,6 +58,8 @@ code_address_chunk <- function(address_chunk) {
 		'coded_addresses.csv'), append=T)
 }
 
+# order two words alphabetically, returning the word in the order (1 or 2) 
+# specified
 alpha_order <- function(name, match, order) {
     vec <- c(name, match)
     a1 <- sort(vec)[order]
