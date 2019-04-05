@@ -35,13 +35,14 @@ leases_matches <- read_csv(file.path(vdir, 'leases_matches.csv'))
 
 lease_keeps <- 
 	leases_matches %>% 
-	filter(pct_coverage<=.95 & !is.na(keep)) %>% 
+	filter(pct_coverage<=.95 | min_n >=100) %>%
+	filter(!is.na(keep)) %>% 
 	dim %>% 
 	.[1]
 
 lease_total <- 
 	leases_matches %>% 
-	filter(pct_coverage<=.95) %>% 
+	filter(pct_coverage<=.95 | min_n >=100) %>% 
 	dim %>% 
 	.[1]
 
@@ -51,13 +52,14 @@ if (lease_left==0) {lease_done = TRUE} else (lease_done = FALSE)
 
 modeled_keeps <- 
 	modeled_matches %>% 
-	filter(pct_coverage<=.95 & !is.na(keep)) %>% 
+	filter(pct_coverage<=.95 | min_n >=100) %>% 
+	filter(!is.na(keep)) %>% 
 	dim %>% 
 	.[1]
 
 modeled_total <- 
 	modeled_matches %>% 
-	filter(pct_coverage<=.95) %>% 
+	filter(pct_coverage<=.95 | min_n >=100) %>% 
 	dim %>% 
 	.[1]
 
@@ -87,7 +89,8 @@ if (grouped_left==0) {grouped_done = TRUE} else {grouped_done = FALSE}
 	sep = '')} else {
 	paste("Only **", modeled_keeps, "** potential matches have been reviewed, 
 		of the **", modeled_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data. \n \n **", modeled_left, 
+		coverage of the match data and cover all matches with at least 
+		100 observations on both sides. \n \n **", modeled_left, 
 		"** matches left to review.",  sep = '')
 }`
 
@@ -99,7 +102,8 @@ if (grouped_left==0) {grouped_done = TRUE} else {grouped_done = FALSE}
 	sep = '')} else {
 	paste("Only **", lease_keeps, "** potential matches have been reviewed, 
 		of the **", lease_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data. \n \n **", lease_left, 
+		coverage of the match data and cover all matches with at least 
+		100 observations on both sides. \n \n **", lease_left, 
 		"** matches left to review.",  sep = '')
 }`
 
