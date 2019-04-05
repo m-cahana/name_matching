@@ -30,6 +30,8 @@ create_edge <- function(name, match) {
 	return (edge)
 }
 
+# given a dataframe of names and matches, pre-assigned to clusters, plots a 
+# given cluster (specified by an integer)
 plot_clusters <- function(df, clusters_to_plot) {
 	clusters_to_plot <- c(clusters_to_plot)
 	df <- 
@@ -42,6 +44,8 @@ plot_clusters <- function(df, clusters_to_plot) {
 		'\n', dim(distinct(df, name))[1], ' nodes', sep = ''))
 }
 
+# given a dataframe of names and matches (nodes connected by an edge), plots 
+# all edges that contain a given word
 plot_word <- function(df, word_to_detect) {
 	df <- 
 		df %>%  
