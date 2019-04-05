@@ -60,7 +60,7 @@ common_words <- c('PROD', 'INC', 'CORP', 'CORPORATION', 'CO', 'COMPANY', 'LLC',
     'WILLIAM', 'JOHN', 'GEORGE', 'DAVE', 'MICHAEL', 'ROBERT', 
     'RICHARD', 'JAMES', 'DAVID', 'JAMES', 'HENRY', 'JACK', 'STEPHEN', 'THOMAS', 
     'RONALD', 'LARRY', 'DONALD', 'RALPH', 'PIPE', 'FRANK', 'SALES', 'KENNETH', 
-    'DON', 'RAY',  'HAROLD', 'DALE', 'MARY')
+    'DON', 'RAY',  'HAROLD', 'DALE', 'MARY', 'BASIN', 'LEASING', 'FUND')
 
 standalone_words <- c('AMERICA', 'PERMIAN', 'MARCELLUS', 'UTICA', 
     'HAYNESVILLE-BOSSIER', 'HAYNESVILLE', 'BOSSIER', 'BARNETT', 'WOODFORD', 

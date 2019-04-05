@@ -72,9 +72,11 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    left_join(lease_count, by = 'name') %>% 
 	    left_join(lease_count, by = c('match' = 'name')) %>%
 	    rowwise() %>% 
-	    mutate(closeness = (1 - 
-	    	((max(n.x, n.y) - min(n.x, n.y))/max(n.x, n.y)))) %>% 
 	    mutate(min_n = min(n.x, n.y)) %>% 
+	    mutate(max_n = max(n.x, n.y)) %>% 
+	    mutate(sum_n = sum(n.x, n.y)) %>% 
+	    mutate(actual_n.x = n.x) %>%
+	    mutate(actual_n.y = n.y) %>%  
 	    ungroup()  %>% 
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
