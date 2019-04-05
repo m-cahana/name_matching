@@ -67,7 +67,7 @@ For each dataset $d \in \{leases, flatfiles\}$, in round $t =  1$:
     \item If two firms are declared to be a likely match via string comparison methods, and they also have a perfect address match, then they are marked as correct
     \end{enumerate}
     
-    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, with the $95\%$ representing the fraction of observations (of leases or wells) covered by reviewed name/match pairs relative to all observations covered in the name matches dataset, not the number of actual name/match pairs relative to all name/match pairs.
+    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, with the $95\%$ representing the fraction of observations (of leases or wells) covered by reviewed name/match pairs relative to all observations covered in the name matches dataset, not the number of actual name/match pairs relative to all name/match pairs. Also review name/match pairs in which both sides of the pair exceed 100 of observations. 
     
     \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$ and generate new firm groups using graph theory
     
@@ -91,7 +91,7 @@ For each dataset $d \in \{leases, flatfiles, ... \}$, in round $t > 1$:
     
     \item Pre-screen firm name matches using firm groups from round $t - 1$
     
-    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches
+    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, and the matches in which both sides of the pair exceed 100 observations. 
     
     \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$ and generate new firm groups using graph theory
     
@@ -156,7 +156,7 @@ Note that if we find matches that are indeed implied to be correct via cluster c
 
 \section{Human Review}
 
-At this stage, most likely some matches in dataset $d$ will have been verified by pre-screening, but not enough matches such that $95\%$ of observations represented by name/match pairs are covered. This is where human review comes in. 
+At this stage, most likely some matches in dataset $d$ will have been verified by pre-screening, but not enough matches such that $95\%$ of observations represented by name/match pairs are covered. Moreover, not all matches in which both sides of the match pair exceed 100 observations will have been reviewed (note that some of these matches will actually be below the $95\%$ threshold because if both sides of the match appear above the threshold, below the threshold their counts (n.x, n.y) will be zeroed out to avoid double counting). This is where human review comes in. 
 
 Matches will be separated by dataset and saved to the "reviewed\_data" folder, in ascending order of cumulative percentage coverage (note that observation counts are not double-counted, so occasionally an observation count in a match pair might be 0 since it is repeated). A human must open all of these match datasets and code each row that doesn't already have a keep score assigned (keep = 1 if match, 0 if not), until they reach the row that achieves $95\%$ coverage. If Googling is required to reach a conclusion on the keep score, the reviewer should make note of that in the row as well. 
 
