@@ -39,5 +39,9 @@ fig <-
   rf %>%
   predict %>%
   as_tibble %>%
-  ggplot(aes(x = predictions)) + geom_histogram()
+  bind_cols(df) %>% 
+  ggplot(aes(x = predictions, fill = as.factor(keep))) + 
+  geom_histogram(position = 'dodge') + 
+  scale_x_continuous(breaks = seq(.0,.8,.1)) + 
+  scale_fill_discrete(name = "keep")
 
