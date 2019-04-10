@@ -42,6 +42,8 @@ extract_group_name <- function(no, cc) {
 		pull()
 }
 
+# order two words alphabetically, returning the word in the order (1 or 2) 
+# specified
 alpha_order <- function(name, match, order) {
     vec <- c(name, match)
     a1 <- sort(vec)[order]

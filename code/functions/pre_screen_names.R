@@ -62,8 +62,9 @@ alpha_order <- function(name, match, order) {
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
 
-	# verify name matches that have an address match, add in lease counts
-	# (avoiding double counting) and create cumulative percentage coverage
+	# verify name matches that have an address match, add in lease counts, 
+	# calculate closeness scores and minimum n's for each pair, adjust n's to 
+	# avoid double counting, and create cumulative percentage coverage
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
@@ -71,9 +72,11 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    left_join(lease_count, by = 'name') %>% 
 	    left_join(lease_count, by = c('match' = 'name')) %>%
 	    rowwise() %>% 
-	    mutate(closeness = (1 - 
-	    	((max(n.x, n.y) - min(n.x, n.y))/max(n.x, n.y)))) %>% 
 	    mutate(min_n = min(n.x, n.y)) %>% 
+	    mutate(max_n = max(n.x, n.y)) %>% 
+	    mutate(sum_n = sum(n.x, n.y)) %>% 
+	    mutate(actual_n.x = n.x) %>%
+	    mutate(actual_n.y = n.y) %>%  
 	    ungroup()  %>% 
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
@@ -83,6 +86,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
 
+	# determine pairs that are now verified as correct but previously were not, 
+	# if relevant 
 	reviewed_files <- 
 		list.files(vdir, full.names = TRUE) %>% 
 		.[.!=file.path(vdir, 'group_name_matches.csv')]
@@ -99,7 +104,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
 	}
 
-	# if we already did some human review on these matches, incorporate it
+	# if we already did some human review on these matches, incorporate it, 
+	# don't overwrite it
 	if (file.exists(output_file)) {
 		pre_existing_name_matches <- read_csv(output_file)
 		name_matches <- 
