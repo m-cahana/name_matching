@@ -1,6 +1,5 @@
 # Created by Michael Cahana in early Feb. 2019
 # Geocodes addresses of specified file and determines matches accordingly
-# To be called by master.csv
 
 #===========
 # inputs: 

@@ -1,6 +1,5 @@
 # Created by Michael Cahana in early November 2018
 # Matches names within a specified dataset
-# To be called by master.csv
 
 #===========
 # inputs: 
