@@ -16,6 +16,7 @@ while(basename(root) != "name_matching") {
   root <- dirname(root)
 }
 source(file.path(root, "data.R"))
+source(file.path(root, "code", "functions", "utils.R"))
 
 #===========
 # needed libraries
@@ -26,11 +27,6 @@ library(tidyverse)
 #===========
 # functions
 #===========
-
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
 
 all_edges <- function(cluster) {
 	edges <- 
@@ -53,11 +49,6 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
-}
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
@@ -178,8 +169,20 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			anti_join(filter(reviewed_pairs, keep ==1), 
 				by = c('name', 'match')) %>% 
 			select(-prior_check)
-
 	}
+
+	# use human name matching to verify matches, overriding the raw jw, cosine
+	# and shared words method
+	name_matches <-
+	  name_matches %>%
+	  as_tibble() %>%
+	  mutate(keep = case_when(
+	  	keep == 1 ~ 1, 
+	    !human_jw & !human_cosine & !initial_match ~ 0,
+	  	human_jw | human_cosine | initial_match ~ 1, 
+	  	TRUE ~ keep))
+
+
 
 	# write out notification files for pairs previously marked as incorrect
 	# but now known to be corrrect, and pairs inferred to be correct via cluster
