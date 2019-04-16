@@ -75,7 +75,7 @@ rf_predict <- function(df, train_file_path) {
   		rf %>%
   		predict2(func, df) %>%
   		as_tibble() %>%
-  		bind_cols(name_matches, .) %>% 
+  		bind_cols(df, .) %>% 
   		rename(rf_prob = predictions)
 
   	return(df)
