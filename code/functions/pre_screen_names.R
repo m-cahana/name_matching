@@ -81,12 +81,30 @@ rf_predict <- function(df, train_file_path) {
   	return(df)
 }
 
+calculate_distance <- function(df, max_threshold, min_threshold) {
+	df <-
+		df %>% 
+		rowwise() %>% 
+		mutate(importance_dist = case_when(
+			max_n >= max_threshold & min_n < min_threshold ~ 
+				min_threshold - min_n, 
+			max_n < max_threshold & min_n >= min_threshold ~ 
+				max_threshold - max_n, 
+			max_n < max_threshold & min_n < min_threshold ~ 
+				raster::pointDistance(c(max_n, min_n), 
+					c(max_threshold, min_threshold), lonlat = F), 
+			max_n >= max_threshold & min_n >= min_threshold ~ 
+				0
+			))
+	return (df)
+}
+
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
 	output_file) {
 
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
-	# avoid double counting, and create cumulative percentage coverage
+	# avoid double counting 
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
@@ -103,10 +121,20 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
-	    replace_na(list(n.x = 0, n.y = 0)) %>% 
-	    mutate(n = n.x + n.y) %>% 
-	    arrange(desc(n)) %>% 
-	    mutate(pct_coverage = cumsum(n)/sum(n)) 
+	    replace_na(list(n.x = 0, n.y = 0))
+
+	# mark match pairs we deem "important" based on their count coverage
+	# note that the importance_dist variable will represent the distance 
+	# an (x,y) pair is from being within both min and max thresholds 
+	# (x here is max_n, and y min_n)
+	count_deciles <- lease_count %>% pull %>% quantile(probs = seq(.1,1,.1))
+	seventieth_percentile <- count_deciles[7]
+	ninetieth_percentile <- count_deciles[9]
+
+	name_matches <- 
+		name_matches %>% 
+		calculate_distance(ninetieth_percentile, seventieth_percentile) %>% 
+		arrange(importance_dist)
 
 	# determine pairs that are now verified as correct but previously were not, 
 	# if relevant 
