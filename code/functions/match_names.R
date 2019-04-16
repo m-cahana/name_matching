@@ -176,10 +176,26 @@ get_matches <- function(words, bag, row_comparison = FALSE) {
     return (list(indices, strings))
 }
 
+# determine number of shared non-common words between name and match
+shared_words <- function(name, match) {
+    words1 <- get_words(name, drop_common_words = F)
+    words2 <- get_words(match, drop_common_words = F)
+    matches <- get_matches(words1, words2, row_comparison = T)[[2]]
+    if (!is.null(matches)) {
+        return_val <- str_count(matches, '\\|') + 1 
+        if (identical(return_val, numeric(0))) {
+            return_val <- 0
+        }
+    } else {
+        return_val <- 0
+    }
+    return(return_val)
+}
+
 # match names using stringdist methods (default Jaro-Winkler)
 # matches are only those with scores that are at or below the threshold
 match_names_stringdist <- function(names, clean_names, 
-    method='jw', threshold=0.25) {
+    method='jw', threshold) {
 
     count <- 0
     while (length(clean_names)>0) {
@@ -263,7 +279,7 @@ match_names_shared_word <- function(names, ...) {
 
 # match names using cosine similarity scores, matches only being those that
 # are at or exceed the given threshold
-match_names_cosine <- function(names, similarity_matrix, threshold=0.4) {
+match_names_cosine <- function(names, similarity_matrix, threshold) {
     count <- 0
     for (i in 1:dim(names)[1]) {
         name <- names %>% 
@@ -334,7 +350,7 @@ extract_idf <- function(word, idfs) {
     return (idf)
 }
 
-match_names <- function(df, output_file, cosine_threshold =  0.4, 
+match_names <- function(df, output_file, cosine_threshold = 0.4, 
     jaro_threshold = 0.15, write_csv = TRUE) {
 
     #=================================
