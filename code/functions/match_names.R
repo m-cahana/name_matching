@@ -375,7 +375,7 @@ extract_name <- function(names){
     return(split_name)
 }
 
-match_first_name <- function(df, jthreshold, cthreshold){
+match_first_name <- function(df){
     clean_names <- 
       df %>% 
       select(name) %>%
@@ -420,16 +420,18 @@ match_first_name <- function(df, jthreshold, cthreshold){
         initials_match = if_else(check_initials | check_initials1, 
             initials_match, FALSE)) 
 
+    # calculate jaro and cosine distances
+      # cosine similarity used by stringdist is the inverse of the version
+      # used by text2vec - standardize to match text2vec
     matches <-
       human_names_match %>%
       mutate(human_jw_distance = stringdist(first_name, first_name1, 
         method = "jw", p = 0), 
       human_cosine_similarity = stringdist(first_name, first_name1, 
-        method = "cosine")) %>%
+        method = "cosine"), 
+      human_cosine_similarity = 1 - human_cosine_similarity) %>%
       select(name, match = name1, human_jw_distance, human_cosine_similarity, 
-        initials_match) %>%
-      filter(human_jw_distance < jthreshold | 
-        human_cosine_similarity < cthreshold | initials_match)
+        initials_match) 
 
     return(matches)
 }
@@ -576,8 +578,7 @@ extract_idf <- function(word, idfs) {
 }
 
 match_names <- function(df, output_file, cosine_threshold =  0.4, 
-    jaro_threshold = 0.15, human_cosine_threshold = .6, 
-    human_jaro_threshold = .6, write_csv = TRUE) {
+    jaro_threshold = 0.15, write_csv = TRUE) {
 
 
     #=================================
@@ -593,7 +594,7 @@ match_names <- function(df, output_file, cosine_threshold =  0.4,
     #===========
     print("first names distance")
     tic()
-    name_map_human <- match_first_name(df, human_jaro_threshold, human_cosine_threshold)
+    name_map_human <- match_first_name(df)
     toc()
 
     #===========
