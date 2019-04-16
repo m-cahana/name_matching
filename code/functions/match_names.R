@@ -428,8 +428,8 @@ match_first_name <- function(df, jthreshold, cthreshold){
         method = "cosine")) %>%
       select(name, match = name1, human_jw_distance, human_cosine_similarity, 
         initials_match) %>%
-      filter(human_jw_distance < jthreshold | human_cosine_similarity < cthreshold | 
-        initials_match)
+      filter(human_jw_distance < jthreshold | 
+        human_cosine_similarity < cthreshold | initials_match)
 
     return(matches)
 }
