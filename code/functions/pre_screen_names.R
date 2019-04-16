@@ -151,7 +151,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			name_matches %>% 
 			inner_join(filter(reviewed_pairs, keep == 0), 
 				by = c('name', 'match')) %>% 
-			select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
+			select(-c('keep.x', 'keep.y', 'n.x', 'n.y'))
 	}
 
 	# if we already did some human review on these matches, incorporate it, 
@@ -162,10 +162,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			pre_existing_name_matches %>% 
 			bind_rows(name_matches) %>% 
 			distinct(name, match, .keep_all = T) %>% 
-			select(-n) %>% 
-			mutate(n = n.x + n.y) %>% 
-		    arrange(desc(n)) %>% 
-		    mutate(pct_coverage = cumsum(n)/sum(n)) 
+			arrange(importance_dist)
 	}
 
 	# if we already have some group matches (that is, verified matches from 
@@ -237,7 +234,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			name_matches %>% 
 			rf_predict(file.path(ddir, 'training', 
 				'lease_match_sample.csv')) %>% 
-			mutate(keep = ifelse(rf_prob<=0.3, 0, keep))
+			mutate(keep = ifelse((rf_prob<=0.2 & is.na(keep)), 0, keep))
 	}	
 
 	# write out notification files for pairs previously marked as incorrect
