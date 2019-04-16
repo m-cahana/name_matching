@@ -16,6 +16,7 @@ while(basename(root) != "name_matching") {
   root <- dirname(root)
 }
 source(file.path(root, "data.R"))
+source(file.path(root, "code", "functions", "utils.R"))
 
 #===========
 # needed libraries
@@ -26,11 +27,6 @@ library(tidyverse)
 #===========
 # functions
 #===========
-
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
 
 all_edges <- function(cluster) {
 	edges <- 
@@ -53,14 +49,19 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
-}
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
-	output_file) {
+	output_file, human_jw_threshold = .6, human_cos_threshold = .6) {
+
+	# flag matches where human name distance is high
+	name_matches <-
+	  name_matches %>% 
+	  filter(is.na(jw_distance), is.na(cosine_similarity), is.na(shared_word),
+	  	human_jw_distance > human_jw_threshold, 
+	  	human_cosine_similarity > human_cos_threshold) %>%
+	  mutate(keep = if_else(human_jw_distance > human_jw_threshold &
+	  	human_cosine_similarity > human_cos_threshold & is.na(initial_match), 
+	  	0, as.double(NA)))
 
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
@@ -68,7 +69,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
-	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
+	    mutate(keep = if_else(!is.na(address), 1, keep)) %>% 
 	    left_join(lease_count, by = 'name') %>% 
 	    left_join(lease_count, by = c('match' = 'name')) %>%
 	    rowwise() %>% 
@@ -85,6 +86,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    mutate(n = n.x + n.y) %>% 
 	    arrange(desc(n)) %>% 
 	    mutate(pct_coverage = cumsum(n)/sum(n)) 
+
 
 	# determine pairs that are now verified as correct but previously were not, 
 	# if relevant 
@@ -178,8 +180,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			anti_join(filter(reviewed_pairs, keep ==1), 
 				by = c('name', 'match')) %>% 
 			select(-prior_check)
-
 	}
+
 
 	# write out notification files for pairs previously marked as incorrect
 	# but now known to be corrrect, and pairs inferred to be correct via cluster
