@@ -27,6 +27,8 @@ library(tidyverse)
 # functions
 #===========
 
+source(file.path(root, "code", "functions", "random_forest_utils.R"))
+
 create_edge <- function(name, match) {
 	edge <- c(name, match)
 	return (edge)
@@ -57,6 +59,26 @@ alpha_order <- function(name, match, order) {
     vec <- c(name, match)
     a1 <- sort(vec)[order]
     return(a1)
+}
+
+rf_predict <- function(df, train_file_path) {
+	train <- read_csv(train_file_path)
+	func <- 
+		paste("shared_words", "cosine_similarity", 
+			"jw_distance", sep = "+") %>%
+		paste("keep", ., sep = "~") %>%
+		as.formula()
+	rf <-
+		func %>%
+  		regression_forest2(train)
+  	df <- 
+  		rf %>%
+  		predict2(func, df) %>%
+  		as_tibble() %>%
+  		bind_cols(name_matches, .) %>% 
+  		rename(rf_prob = predictions)
+
+  	return(df)
 }
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
@@ -178,8 +200,17 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			anti_join(filter(reviewed_pairs, keep ==1), 
 				by = c('name', 'match')) %>% 
 			select(-prior_check)
-
 	}
+
+	# verify name matches that have a low match probability according to a 
+	# trained random forest (rf) model 
+	if(file.exists(file.path(ddir, 'training', 'lease_match_sample.csv'))) {
+		name_matches <- 
+			name_matches %>% 
+			rf_predict(file.path(ddir, 'training', 
+				'lease_match_sample.csv')) %>% 
+			mutate(keep = ifelse(rf_prob<=0.3, 0, keep))
+	}	
 
 	# write out notification files for pairs previously marked as incorrect
 	# but now known to be corrrect, and pairs inferred to be correct via cluster

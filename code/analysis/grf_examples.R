@@ -43,7 +43,7 @@ func <-
   as.formula()
 
 rf <-
-  function %>%
+  func %>%
   regression_forest2(df)
 
 sample_fig <-
