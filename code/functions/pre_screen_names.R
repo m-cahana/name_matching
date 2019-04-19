@@ -16,6 +16,7 @@ while(basename(root) != "name_matching") {
   root <- dirname(root)
 }
 source(file.path(root, "data.R"))
+source(file.path(root, "code", "functions", "utils.R"))
 
 #===========
 # needed libraries
@@ -33,6 +34,7 @@ create_edge <- function(name, match) {
 	edge <- c(name, match)
 	return (edge)
 }
+
 
 all_edges <- function(cluster) {
 	edges <- 
@@ -55,11 +57,6 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
-}
 
 rf_predict <- function(df, train_file_path) {
 	train <- read_csv(train_file_path)
@@ -100,7 +97,17 @@ calculate_distance <- function(df, max_threshold, min_threshold) {
 }
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
-	output_file) {
+	output_file, human_jw_threshold = .6, human_cos_threshold = .6) {
+
+	# flag matches where human name distance is high
+	name_matches <-
+	  name_matches %>% 
+	  filter(is.na(jw_distance), is.na(cosine_similarity), is.na(shared_word),
+	  	human_jw_distance > human_jw_threshold, 
+	  	human_cosine_similarity > human_cos_threshold) %>%
+	  mutate(keep = if_else(human_jw_distance > human_jw_threshold &
+	  	human_cosine_similarity > human_cos_threshold & is.na(initial_match), 
+	  	0, as.double(NA)))
 
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
@@ -108,7 +115,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
-	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
+	    mutate(keep = if_else(!is.na(address), 1, keep)) %>% 
 	    left_join(lease_count, by = 'name') %>% 
 	    left_join(lease_count, by = c('match' = 'name')) %>%
 	    rowwise() %>% 
@@ -135,6 +142,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		name_matches %>% 
 		calculate_distance(ninetieth_percentile, seventieth_percentile) %>% 
 		arrange(importance_dist)
+
 
 	# determine pairs that are now verified as correct but previously were not, 
 	# if relevant 
