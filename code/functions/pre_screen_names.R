@@ -102,11 +102,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# flag matches where human name distance is high
 	name_matches <-
 	  name_matches %>% 
-	  filter(is.na(jw_distance), is.na(cosine_similarity), is.na(shared_word),
-	  	human_jw_distance > human_jw_threshold, 
-	  	human_cosine_similarity > human_cos_threshold) %>%
 	  mutate(keep = if_else(human_jw_distance > human_jw_threshold &
-	  	human_cosine_similarity > human_cos_threshold & is.na(initial_match), 
+	  	human_cosine_similarity > human_cos_threshold & is.na(initials_match), 
 	  	0, as.double(NA)))
 
 	# verify name matches that have an address match, add in lease counts, 

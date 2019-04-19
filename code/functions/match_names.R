@@ -1,6 +1,5 @@
 # Created by Michael Cahana in early November 2018
 # Matches names within a specified dataset
-# To be called by master.csv
 
 # ==============================
 # Inputs
@@ -76,7 +75,8 @@ company <-
     'OPERAT', 'SERVICES', '\\sOIL', 'PROPERTIES', '\\sEP', 'ASSOC', 'PETR', 
     'PARTNER', 'PROD', 'NATURAL', 'GEOSOUTHERN', 'MIDLAND', 'INTEREST', 'TEXAS',
     'ROYALT', 'BASIN', 'DRLG', 'DRILL', '\\sOIL', '\\sGAS', 'DEVELOPMENT', 
-    'HOLDING', 'RIVER', 'PERMIAN', 'CHALFANT', 'MGMT', 'MINERALS', 'CONTINENTAL',
+    'HOLDING', 'RIVER', 'PERMIAN', 'CHALFANT', 'MGMT', 'MINERALS', 
+    'CONTINENTAL',
     'SOUTHWESTERN', 'E & P', 'E&P', '\\sGAS', 'GAS\\s', 'OIL\\s', 'CHURCH', 
     'INVEST', 'CAPITAL', 'UNIVERSITY', '\\sLEASING', 'LTD', 'LIMITED', 
     'MINERAL', 'TITLE', 'ENTERPRIS', 'FINANC', 'REFINERY', 'GROUP', 'TRUST',
@@ -89,7 +89,7 @@ company <-
 
 
 # ==============================
-# Helper functions
+# helper functions
 # ==============================
 
 clean_name  <- function(name, drop_common_words=FALSE) {
@@ -194,7 +194,6 @@ get_matches <- function(words, bag, row_comparison = FALSE) {
     return (list(indices, strings))
 }
 
-
 # determine number of shared non-common words between name and match
 shared_words <- function(name, match) {
     words1 <- get_words(name, drop_common_words = F)
@@ -211,10 +210,8 @@ shared_words <- function(name, match) {
     return(return_val)
 }
 
-
-
 # ==============================
-# Human Name functions
+# human name functions
 # ==============================
 
 clean_name  <- function(name, drop_common_words=FALSE, human = FALSE) {
@@ -263,7 +260,6 @@ clean_name  <- function(name, drop_common_words=FALSE, human = FALSE) {
     return(words)
 }
 
-
 # use graph theory magic - if a intersects b and b intersects c, we want
 # a, b, and c to all be in one group
 int_bundles <- function(x, y){
@@ -282,9 +278,12 @@ int_bundles <- function(x, y){
 
 # Sources for names dictionaries:
 # http://www2.census.gov/topics/genealogy/2010surnames/names.zip
-# https://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/areas/nlp/corpora/names/male.txt
-# https://www.cs.cmu.edu/afs/cs/project/ai-repository/ai/areas/nlp/corpora/names/female.txt
-# https://github.com/carltonnorthern/nickname-and-diminutive-names-lookup/blob/master/names.csv
+# https://www.cs.cmu.edu/afs/cs/project/...
+# ...ai-repository/ai/areas/nlp/corpora/names/male.txt
+# https://www.cs.cmu.edu/afs/cs/project/...
+# ...ai-repositor/ai/areas/nlp/corpora/names/female.txt
+# https://github.com/carltonnorthern/...
+# ...nickname-and-diminutive-names-lookup/blob/master/names.csv
 
 # function to identify last name and extract 
 extract_name <- function(names){
@@ -316,7 +315,7 @@ extract_name <- function(names){
       filter(!is.na(nickname)) %>%
       group_by(nickname) %>%
       filter(row_number() == 1) %>%
-      ungroup %>%
+      ungroup() %>%
       mutate_all(toupper) %>%
       filter(!(nickname %in% .$std_name))
 
@@ -324,7 +323,7 @@ extract_name <- function(names){
       tibble(first_name = c(nicknames$std_name, nicknames$nickname)) %>%
       bind_rows(female_first, male_first)  %>%
       mutate_all(toupper) %>%
-      unique %>%
+      unique() %>%
       mutate(first_name = str_to_upper(first_name), 
         IsFirst = TRUE)
 
@@ -343,7 +342,7 @@ extract_name <- function(names){
       group_by(name, IsLast, IsFirst) %>%
       arrange(name_split) %>%
       filter(row_number() == 1) %>%
-      ungroup 
+      ungroup()
 
     # split up name based on what is categorized as
     split_name <- 
@@ -366,17 +365,14 @@ extract_name <- function(names){
       arrange(name, Rank) %>%
       group_by(name) %>%
       filter(row_number() == 1) %>%
-      ungroup
+      ungroup()
 
-    # join with nicknames dataset to convert nicknames to first names - JK THIS IS TERRIBLE
+    # join with nicknames dataset to convert nicknames to first names 
     split_name <-
       split_name %>%
       select(-IsFirst, -IsLast) %>%
       mutate(first_name = str_replace_all(first_name, '-', ' ')) %>%
-      mutate_if(is.character, funs(str_squish(str_trim(.)))) #%>%
-      #left_join(rename(nicknames, first_name = nickname)) %>%
-     # mutate(first_name = if_else(!is.na(std_name), std_name, first_name)) %>%
-     # select(-std_name)
+      mutate_if(is.character, funs(str_squish(str_trim(.)))) 
 
     # extract initials and store as a list column
     split_name <-
@@ -384,10 +380,11 @@ extract_name <- function(names){
       mutate(initials = str_split(first_name, ' ')) %>%
       group_by(name) %>%
       mutate(initials = list(str_extract(pluck(initials, 1), '.{1}')), 
-        initials = if_else(nchar(first_name) <= 2, list(first_name), initials)) %>%
+        initials = if_else(nchar(first_name) <= 2, list(first_name), 
+          initials)) %>%
       mutate(first_name = str_replace(first_name, '\\sJR$', ''), 
         last_name = str_replace(last_name, '\\sJR$', '')) %>%
-      ungroup %>%
+      ungroup() %>%
       right_join(names)
 
     return(split_name)
@@ -402,6 +399,7 @@ match_first_name <- function(df){
       mutate(name = clean_name(name, human = TRUE)) %>% 
       pull()
 
+    df <- df %>% select(name) %>% distinct()
     split_names <- 
       extract_name(clean_names) %>%
       rename(clean_name = name) %>%
@@ -409,10 +407,10 @@ match_first_name <- function(df){
       filter(!company) 
 
     # create pairs of names we want to check based on if they have the same
-      # last name
-      # Check if initials are a match if the first name has more than one word
-      # or if it has less than 4 characters 
-      # (ie we don't want to match john smith to jake smith)
+    # last name
+    # Check if initials are a match if the first name has more than one word
+    # or if it has less than 4 characters 
+    # (ie we don't want to match john smith to jake smith)
     human_names <- 
       filter(split_names, !is.na(last_name)) %>%
       mutate(id = row_number()) %>%
@@ -426,10 +424,10 @@ match_first_name <- function(df){
       setNames(paste0(colnames(.), '1')) %>%
       rename(last_name = last_name1)
    
-   # full_join human names with itself
-      # check if bag of words containing first initial of each word in the first
-      # name matches
-      # then do string dist on first names
+    # full_join human names with itself
+    # check if bag of words containing first initial of each word in the first
+    # name matches
+    # then do string dist on first names
     human_names_match <-
       human_names %>%
       full_join(human_names1) %>%
@@ -439,8 +437,8 @@ match_first_name <- function(df){
             initials_match, FALSE)) 
 
     # calculate jaro and cosine distances
-      # cosine similarity used by stringdist is the inverse of the version
-      # used by text2vec - standardize to match text2vec
+    # cosine similarity used by stringdist is the inverse of the version
+    # used by text2vec - standardize to match text2vec
     matches <-
       human_names_match %>%
       mutate(human_jw_distance = stringdist(first_name, first_name1, 
@@ -456,7 +454,7 @@ match_first_name <- function(df){
 
 
 # ==============================
-# String Distance functions
+# string distance functions
 # ==============================
 
 # match names using stringdist methods (default Jaro-Winkler)
@@ -480,8 +478,10 @@ match_names_stringdist <- function(names, clean_names,
             next
         }
 
-        name_table <- as.data.table(cbind(cname = c_name, cmatch = clean_names, name = f_name, match = names))
-        name_table <- name_table[, jw_distance := stringdist(cname, cmatch, method = method, p = 0)]
+        name_table <- as.data.table(cbind(cname = c_name, 
+          cmatch = clean_names, name = f_name, match = names))
+        name_table <- name_table[, jw_distance := stringdist(cname, 
+          cmatch, method = method, p = 0)]
         name_table <- name_table[jw_distance <= threshold]
 
         if(nrow(name_table)>0) {
@@ -496,7 +496,6 @@ match_names_stringdist <- function(names, clean_names,
 
     return(df)
 }
-
 
 # match names if they share a word
 match_names_shared_word <- function(names, ...) {
@@ -571,7 +570,6 @@ match_names_cosine <- function(names, similarity_matrix, threshold) {
         filter(cosine_similarity>=threshold)
     return (df)
 }
-
 
 # determine inverse-document frequency of word in list of names
 idf <- function(names, word) {
@@ -729,7 +727,7 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
         full_join(name_map_jaro, by = c('name', 'match')) %>% 
         full_join(name_map_human, by = c('name', 'match')) %>%
         filter(name!=match) %>%
-        ungroup
+        ungroup()
 
     #===========    
     # fill in missing scores    
@@ -746,7 +744,7 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
 
     # cosine similarity 
     print('getting missing cosine similarity')
-
+    tic()
     missing_cosine <-   
         master %>%  
         filter(is.na(cosine_similarity)) %>%    
@@ -769,8 +767,7 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
         sim2(x = dtm_tfidf, method = "cosine", norm = "l2") %>%     
         as.matrix() %>%     
         as.data.table()     
-
-    tic()  
+  
     missing_cosine <-   
         missing_cosine %>%  
         rowwise() %>%   
@@ -801,7 +798,8 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
         mutate(shared_words = if_else(is.na(shared_words.x),    
             shared_words.y, shared_words.x)) %>%  
         select(name, match, shared_words, cosine_similarity,   
-            jw_distance) 
+            jw_distance, human_jw_distance, human_cosine_similarity, 
+            initials_match) 
 
     #===========
     # save output or return dataframe

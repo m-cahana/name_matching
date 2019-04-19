@@ -3,6 +3,7 @@ library(Formula)
 library(grf)
 
 # TC copied this from the texas repo, circa april 2019
+# MC added predict2() function
 #===========================================================================
 # RANDOM FOREST HELPER FUNCTIONS
 #===========================================================================
