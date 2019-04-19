@@ -257,3 +257,18 @@ rf_logcausal2 <- function(f, d, ...) {
   return(rf_logcausal(X, Y, W, ...))
 }
 
+# apply a regression forest with a formula onto a new dataframe to generate 
+# predictions. the formula y ~ w | x1 + x2 + x3 means estimate a 
+# regression forest for the outcome y, where the splitting variables are x1, 
+# x2, and x3
+predict2 <- function(rf, f, d, ...) {
+  f <- Formula(f)
+
+  X <-
+    formula(f, rhs = 1, lhs = 0) %>%
+    update(~ 0 + .) %>%
+    model.matrix(d)
+
+  return(predict(rf, X))
+}
+
