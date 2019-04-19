@@ -267,8 +267,10 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	} 
 
 	if (length(reviewed_files>0)) {
-		write_csv(previous_non_pairs, file.path(ddir, 
+		if (dim(previous_non_pairs)[1]>0) {
+			write_csv(previous_non_pairs, file.path(ddir, 
 				'notifications', 'previous_non_pairs.csv'))
+		}
 	}
 	if (file.exists(file.path(ddir, 'grouped_matches', 'all_groups.csv'))) {
 		write_csv(inferred_matches, file.path(ddir, 
