@@ -135,7 +135,10 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_replace_all(address, '\\+', '')) %>%  
 		mutate(address = str_replace_all(address, '£', '')) %>% 
 		mutate(address = str_replace_all(address, '&', '')) %>%
-		mutate(address = str_replace_all(address, '#', '')) 
+		mutate(address = str_replace_all(address, '#', '')) %>% 
+		# clean up N/A's
+		mutate(address = str_replace(address, 'N/A', '')) %>% 
+		filter(address!= ' , ,')
 
 	# set Google Maps API Key (specified in paths.R)
 	set_key(google_api_key)
@@ -147,15 +150,20 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		filter(!(address %in% already_coded_addresses)) %>% 
 		count(address) 
 	if (dim(coded_addresses)[1]>0) {
-		# divide coded addresses into chunks of ~500 rows, such that we save 
-		# geocoding results in increments instead of all at once
-		coded_addresses <- split(coded_addresses, 
-			seq(1,dim(coded_addresses)[1] %/% 500))
-		# geocode chunk by chunk
-		coded_addresses <-
-			coded_addresses %>%  
-			lapply(code_address_chunk) %>% 
-			bind_rows()
+		# if only one new address, don't split into chunks
+		if (dim(coded_addresses[1]==1)) {
+			coded_addresses <- code_address_chunk(coded_addresses)
+		} else {
+			# divide coded addresses into chunks of ~500 rows, such that we save 
+			# geocoding results in increments instead of all at once
+			coded_addresses <- split(coded_addresses, 
+				seq(1,dim(coded_addresses)[1] %/% 500))
+			# geocode chunk by chunk
+			coded_addresses <-
+				coded_addresses %>%  
+				lapply(code_address_chunk) %>% 
+				bind_rows()
+		}
 	}
 
 	#===========
