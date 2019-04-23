@@ -15,7 +15,6 @@ while(basename(root) != 'name_matching') {
   root <- dirname(root)
 }
 source(file.path(root, 'data.R'))
-source(file.path(root, 'code', 'functions', 'utils.R'))
 
 # ==============================
 # Needed libraries
@@ -91,6 +90,8 @@ company <-
 # ==============================
 # helper functions
 # ==============================
+
+source(file.path(root, 'code', 'functions', 'utils.R'))
 
 clean_name  <- function(name, drop_common_words=FALSE) {
     words <- 

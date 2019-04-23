@@ -25,10 +25,8 @@ library(igraph)
 # functions
 #===========
 
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
 
 # given a dataframe of names and matches, pre-assigned to clusters, plots a 
 # given cluster (specified by an integer)
