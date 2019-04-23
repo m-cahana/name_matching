@@ -202,7 +202,7 @@ Matches will be separated by dataset and saved to the "reviewed\_data" folder, i
 
 We want to group together matches under a shared name. For example, if the match datasets in "reviewed\_data" tell us that "CHESAPEAKE" is matched to "CHESAPEAKE MARCELLUS", and "CHESAPEAKE MARCELLUS" is matched to "CHESAPEAKE UTICA", we want to map all three names to one common name (presumably "CHESAPEAKE"). We do this using the R \href{https://cran.r-project.org/web/packages/igraph/igraph.pdf}{igraph} library. 
 
-If we were to construct a graph with the nodes "CHESAPEAKE MARCELLUS", "CHESAPEAKE UTICA", and "CHESAPEAKE", and edges between "CHESAPEAKE"/"CHESAPEAKE MARCELLUS" and "CHESAPEAKE MARCELLUS"/"CHESAPEAKE UTICA", all three nodes are said to form a connected component (what igraph often refers to as a cluster). 
+If we were to construct a graph with the nodes "CHESAPEAKE MARCELLUS", "CHESAPEAKE UTICA", and "CHESAPEAKE", and edges between "CHESAPEAKE"/ "CHESAPEAKE MARCELLUS" and "CHESAPEAKE MARCELLUS"/ "CHESAPEAKE UTICA", all three nodes are said to form a connected component (what igraph often refers to as a cluster). 
 
 This is essentially the graph theory magic we do, for all matches in "reviewed\_data". Basically, we read in and combine all matches, then use igraph to form a massive graph of nodes and edges, with nodes being firm names and edges being name/match pairs. Our code then determines connected components and assigns every name within a connected component the name of the firm that is first in alphabetical order within that component. 
 
