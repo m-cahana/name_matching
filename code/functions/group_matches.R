@@ -106,7 +106,8 @@ group_matches <- function(df, output_file, write_csv = TRUE) {
 	cc <- 
 		cc %>% 
 		inner_join(distinct_cc, by='cluster') %>% 
-		arrange(cluster, name)
+		arrange(cluster, name) %>% 
+		filter(group_name != name)
 
 	#===========
 	# save output
