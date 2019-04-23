@@ -37,7 +37,8 @@ source(file.path(root, 'code', 'functions', 'match_addresses.R'))
 #===========
 
 desc <- read_fst(file.path(rdir, 'pden_desc-2018-09-26.fst'), 
-    columns = c('api_no', 'curr_oper_id', 'curr_oper_no', 'curr_oper_name')) %>% 
+    columns = c('api_no', 'curr_oper_id', 'curr_oper_no', 
+    	'common_oper_name')) %>% 
         mutate(api_no = str_replace_all(api_no, '-', '') %>% 
         stri_pad_right(14, 0)) 
 modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) 
@@ -69,7 +70,7 @@ df <-
 	select(api_no, county, state) %>% 
     left_join(desc, by='api_no') %>% 
     left_join(addresses_to_google, by='curr_oper_id') %>% 
-    rename(name = curr_oper_name)
+    rename(name = common_oper_name)
 output_file <- file.path(ddir, 'matches', 'addresses', 
     'modeled_address_matches.csv')
 
