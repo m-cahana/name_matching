@@ -30,6 +30,9 @@ library(tictoc)
 # functions
 #===========
 
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
+
 # geocode address using googleway 
 geocode <- function(address, row) {
 	print(paste(row, address, sep=' - ')) 
@@ -55,14 +58,6 @@ code_address_chunk <- function(address_chunk) {
 		select(-c(n, row)) 
 	write_csv(address_chunk, file.path(ddir, 'address_backups', 
 		'coded_addresses.csv'), append=T)
-}
-
-# order two words alphabetically, returning the word in the order (1 or 2) 
-# specified
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
 }
 
 match_addresses <- function(df, already_coded_addresses, output_file) {

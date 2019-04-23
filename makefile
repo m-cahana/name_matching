@@ -20,6 +20,7 @@ CDIR_review = $(CDIR)/review
 CDIR_pre_screen = $(CDIR)/pre_screen
 CDIR_grouping = $(CDIR)/grouping
 CDIR_markdown_summary = $(CDIR)/markdown_summary
+CDIR_functions = $(CDIR)/functions
 ODIR = $(DIR)/output
 
 # data files
@@ -39,12 +40,16 @@ $(DATA_gen)/matches/names/modeled_name_matches.csv: \
 	$(CDIR_matching)/match_modeled_names.R \
 	$(DATA_raw)/pden_desc-2018-09-26.fst \
 	$(DATA_raw)/modeled_prices.Rds \
-	$(DATA_raw)/names_edited.xlsx 
+	$(DATA_raw)/names_edited.xlsx \
+	$(CDIR_functions)/match_names.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 $(DATA_gen)/matches/names/leases_name_matches.csv: \
 	$(CDIR_matching)/match_leases_names.R \
-	$(DATA_raw)/leases/landtrac_tx.Rds 
+	$(DATA_raw)/leases/landtrac_tx.Rds \
+	$(CDIR_functions)/match_names.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================
@@ -54,12 +59,16 @@ $(DATA_gen)/matches/names/leases_name_matches.csv: \
 $(DATA_gen)/matches/addresses/modeled_address_matches.csv: \
 	$(CDIR_matching)/match_modeled_addresses.R \
 	$(DATA_raw)/modeled_prices.Rds \
-	$(DATA_raw)/addresses/nph_oper_addr-2017-04-30.Rdata 
+	$(DATA_raw)/addresses/nph_oper_addr-2017-04-30.Rdata \
+	$(CDIR_functions)/match_addresses.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 $(DATA_gen)/matches/addresses/leases_address_matches.csv: \
 	$(CDIR_matching)/match_leases_addresses.R \
-	$(DATA_raw)/leases/landtrac_tx.Rds 
+	$(DATA_raw)/leases/landtrac_tx.Rds \
+	$(CDIR_functions)/match_addresses.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================
@@ -72,14 +81,20 @@ $(DATA_rev)/modeled_matches.csv: \
 	$(DATA_raw)/modeled_prices.Rds \
 	$(DATA_raw)/names_edited.xlsx \
 	$(DATA_gen)/matches/addresses/modeled_address_matches.csv \
-	$(DATA_gen)/matches/names/modeled_name_matches.csv 
+	$(DATA_gen)/matches/names/modeled_name_matches.csv \
+	$(CDIR_functions)/pre_screen_names.R \
+	$(CDIR_functions)/random_forest_utils.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 $(DATA_rev)/leases_matches.csv: \
 	$(CDIR_pre_screen)/pre_screen_leases_names.R \
 	$(DATA_raw)/leases/landtrac_tx.Rds \
 	$(DATA_gen)/matches/names/leases_name_matches.csv \
-	$(DATA_gen)/matches/addresses/leases_address_matches.csv 
+	$(DATA_gen)/matches/addresses/leases_address_matches.csv \
+	$(CDIR_functions)/pre_screen_names.R \
+	$(CDIR_functions)/random_forest_utils.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================
@@ -89,7 +104,9 @@ $(DATA_rev)/leases_matches.csv: \
 $(DATA_gen)/grouped_matches/all_groups.csv: \
 	$(CDIR_grouping)/group_all_matches.R \
 	$(DATA_rev)/leases_matches.csv \
-	$(DATA_rev)/modeled_matches.csv 
+	$(DATA_rev)/modeled_matches.csv \
+	$(CDIR_functions)/group_matches.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================
@@ -98,7 +115,9 @@ $(DATA_gen)/grouped_matches/all_groups.csv: \
 
 $(DATA_rev)/group_name_matches.csv: \
 	$(CDIR_matching)/match_group_names.R \
-	$(DATA_gen)/grouped_matches/all_groups.csv 
+	$(DATA_gen)/grouped_matches/all_groups.csv \
+	$(CDIR_functions)/match_names.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================
@@ -108,7 +127,9 @@ $(DATA_rev)/group_name_matches.csv: \
 $(DATA_gen)/grouped_matches/grouped_groups.csv : \
 	$(CDIR_grouping)/group_grouped_clusters.R \
 	$(DATA_gen)/grouped_matches/all_groups.csv \
-	$(DATA_rev)/group_name_matches.csv 
+	$(DATA_rev)/group_name_matches.csv \
+	$(CDIR_functions)/group_matches.R \
+	$(CDIR_functions)/utils.R 
 	Rscript $<
 
 # ===========================================================================

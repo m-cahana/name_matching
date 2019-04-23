@@ -16,26 +16,26 @@ while(basename(root) != "name_matching") {
   root <- dirname(root)
 }
 source(file.path(root, "data.R"))
-source(file.path(root, "code", "functions", "utils.R"))
 
 #===========
 # needed libraries
 #===========
 library(igraph)
 library(tidyverse)
+library(sf)
 
 #===========
 # functions
 #===========
 
+# TC's random forest functions
 source(file.path(root, "code", "functions", "random_forest_utils.R"))
 
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
 
-
+# given a cluster of names, enumerates all possible edges in a cluster
+# such that the cluster is complete 
 all_edges <- function(cluster) {
 	edges <- 
 		cluster %>% 
@@ -48,6 +48,8 @@ all_edges <- function(cluster) {
 	return (unlist(map2(edges$name, edges$match, create_edge)))
 }
 
+# takes in a list of edge pair vectors (vectors with a name and match)
+# and converts it to a tibble with name and match columns 
 list_to_df_edge <- function(l) {
 	df <- 
 		l %>% 
@@ -57,7 +59,7 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
-
+# train random forest (RF) using sample data, and apply predictions onto df
 rf_predict <- function(df, train_file_path) {
 	train <- read_csv(train_file_path)
 	func <- 
@@ -79,21 +81,36 @@ rf_predict <- function(df, train_file_path) {
   	return(df)
 }
 
-calculate_distance <- function(df, max_threshold, min_threshold) {
+# determine Euclidean distance between a (max, min) point and 
+# some specified importance cutoffs
+calculate_distance <- function(df, max_threshold, min_threshold, 
+	min_max_ratio = NA) {
+	# create the rectangular polygon that represents the area in which
+	# both the min and max threshold critera are met
+	valid_polygon <- st_polygon(list(rbind(c(max_threshold, min_threshold),
+		c(max_threshold, 1e10),
+		c(1e10, 1e10), 
+		c(1e10,min_threshold), 
+		c(max_threshold, min_threshold))))
+	if (!is.na(min_max_ratio)) {
+		# create the traingular polygon that represents the area in which
+		# the min max ratio is satisfied
+		ratio <- st_polygon(list(rbind(c(0,0), 
+			c(1e10,1e10*min_max_ratio), 
+			c(0,1e10*min_max_ratio), c(0,0))))
+		# declare the valid polygon to the be intersection of the previous
+		# rectangular polygon and this triangular one
+		valid_polygon <- st_intersection(valid_polygon, ratio)
+	}
+
 	df <-
 		df %>% 
 		rowwise() %>% 
-		mutate(importance_dist = case_when(
-			max_n >= max_threshold & min_n < min_threshold ~ 
-				min_threshold - min_n, 
-			max_n < max_threshold & min_n >= min_threshold ~ 
-				max_threshold - max_n, 
-			max_n < max_threshold & min_n < min_threshold ~ 
-				raster::pointDistance(c(max_n, min_n), 
-					c(max_threshold, min_threshold), lonlat = F), 
-			max_n >= max_threshold & min_n >= min_threshold ~ 
-				0
-			))
+		# determine importance distance as distance from (max, min) point to
+		# the valid polygon 
+		mutate(importance_dist = as.double(st_distance(
+			st_point(c(max_n, min_n)), valid_polygon)))
+
 	return (df)
 }
 
@@ -131,16 +148,17 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# mark match pairs we deem "important" based on their count coverage
 	# note that the importance_dist variable will represent the distance 
 	# an (x,y) pair is from being within both min and max thresholds 
-	# (x here is max_n, and y min_n)
-	count_deciles <- lease_count %>% pull %>% quantile(probs = seq(.1,1,.1))
+	# (x here is max_n, and y min_n), and the min_max_ratio line, if specified
+	count_deciles <- lease_count %>% pull() %>% quantile(probs = seq(.1,1,.1))
 	seventieth_percentile <- count_deciles[7]
 	ninetieth_percentile <- count_deciles[9]
+	min_max_ratio = 0.10
 
 	name_matches <- 
 		name_matches %>% 
-		calculate_distance(ninetieth_percentile, seventieth_percentile) %>% 
+		calculate_distance(ninetieth_percentile, seventieth_percentile, 
+			min_max_ratio) %>% 
 		arrange(importance_dist)
-
 
 	# determine pairs that are now verified as correct but previously were not, 
 	# if relevant 

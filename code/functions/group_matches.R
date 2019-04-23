@@ -27,10 +27,8 @@ library(igraph)
 # functions
 #===========
 
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
 
 extract_group_name <- function(no, cc) {
 	group_name <- 
@@ -108,7 +106,8 @@ group_matches <- function(df, output_file, write_csv = TRUE) {
 	cc <- 
 		cc %>% 
 		inner_join(distinct_cc, by='cluster') %>% 
-		arrange(cluster, name)
+		arrange(cluster, name) %>% 
+		filter(group_name != name)
 
 	#===========
 	# save output
