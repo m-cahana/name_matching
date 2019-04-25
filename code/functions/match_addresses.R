@@ -146,7 +146,7 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		count(address) 
 	if (dim(coded_addresses)[1]>0) {
 		# if only one new address, don't split into chunks
-		if (dim(coded_addresses[1]==1)) {
+		if (dim(coded_addresses[1])==1) {
 			coded_addresses <- code_address_chunk(coded_addresses)
 		} else {
 			# divide coded addresses into chunks of ~500 rows, such that we save 
