@@ -127,6 +127,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
 	# avoid double counting 
+	# also add in count of total number of words in match pair
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
@@ -143,7 +144,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    mutate(n.x = ifelse(duplicated(name), 0, n.x)) %>% 
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
-	    replace_na(list(n.x = 0, n.y = 0))
+	    replace_na(list(n.x = 0, n.y = 0)) %>% 
+	    mutate(word_count = str_count(name,'\\w+') + str_count(match, '\\w+'))
 
 	# mark match pairs we deem "important" based on their count coverage
 	# note that the importance_dist variable will represent the distance 
