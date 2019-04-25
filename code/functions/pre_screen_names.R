@@ -64,7 +64,8 @@ rf_predict <- function(df, train_file_path) {
 	train <- read_csv(train_file_path)
 	func <- 
 		paste("shared_words", "cosine_similarity", 
-			"jw_distance", sep = "+") %>%
+			"jw_distance", "human_jw_distance", 
+			"word_count", "sum_n", sep = "+") %>%
 		paste("keep", ., sep = "~") %>%
 		as.formula()
 	rf <-
@@ -118,11 +119,14 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	output_file, human_jw_threshold = .6, human_cos_threshold = .6) {
 
 	# flag matches where human name distance is high
+	# fill in missing human match metrics
 	name_matches <-
 	  name_matches %>% 
 	  mutate(keep = if_else(human_jw_distance > human_jw_threshold &
 	  	human_cosine_similarity > human_cos_threshold & is.na(initials_match), 
-	  	0, as.double(NA)))
+	  	0, as.double(NA))) %>% 
+	  replace_na(list(human_jw_distance = 1, human_cosine_similarity = 1, 
+	  	initials_match = FALSE))
 
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
