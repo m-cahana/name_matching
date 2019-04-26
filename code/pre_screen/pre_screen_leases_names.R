@@ -50,7 +50,7 @@ name_matches <- read_csv(file.path(ddir, 'matches', 'names',
 	'leases_name_matches.csv'))
 address_matches <- read_csv(file.path(ddir, 'matches', 'addresses', 
 	'leases_address_matches.csv'))
-output_file <- file.path(vdir, 'leases_matches.csv')
+output_file <- file.path(vdir, 'tx_leases_matches.csv')
 lease_count <- 
 	tx_leases %>% 
 	rename(name = grnte_al) %>% 

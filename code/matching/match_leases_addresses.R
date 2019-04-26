@@ -7,6 +7,7 @@
 # landtrac_tx.Rds
 # coded_addresses.csv
 # leases_pa_raw.Rds
+# all_leases.Rds
 #===========
 # needed libraries
 #===========
@@ -40,6 +41,8 @@ pa_leases <-
 	readRDS(file.path(rdir, 'leases', 'leases_pa_raw.Rds')) %>% 
 	st_set_geometry(NULL) %>% 
 	as_tibble()
+all_leases <- 
+	readRDS(file.path(rdir, 'leases', 'all_leases.Rds'))
 already_coded_addresses <- read_csv(file.path(ddir, 'address_backups', 
 	'coded_addresses.csv')) 
 
@@ -56,7 +59,7 @@ df <-
 	select(name, address) 
 
 output_file <- file.path(ddir, 'matches', 'addresses', 
-	'leases_address_matches.csv')
+	'tx_leases_address_matches.csv')
 
 match_addresses(df, already_coded_addresses, output_file)
 
@@ -68,5 +71,16 @@ df <-
 
 output_file <- file.path(ddir, 'matches', 'addresses', 
 	'pa_leases_address_matches.csv')
+
+match_addresses(df, already_coded_addresses, output_file)
+
+# all
+df <- 
+	all_leases %>% 
+	rename(address = grnte_ad, name = grnte_al) %>% 
+	select(name, address) 
+
+output_file <- file.path(ddir, 'matches', 'addresses', 
+	'leases_address_matches.csv')
 
 match_addresses(df, already_coded_addresses, output_file)
