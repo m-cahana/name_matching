@@ -131,9 +131,19 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_replace_all(address, '£', '')) %>% 
 		mutate(address = str_replace_all(address, '&', '')) %>%
 		mutate(address = str_replace_all(address, '#', '')) %>% 
+		mutate(address = str_replace_all(address, '@', '')) %>% 
+		mutate(address = str_replace_all(address, '=', '')) %>% 
+		mutate(address = str_replace_all(address, '\\"', '')) %>% 
+		mutate(address = str_replace_all(address, '`', '')) %>% 
+		mutate(address = str_replace_all(address, '\\[', '')) %>% 
+		mutate(address = str_replace_all(address, '\\]', '')) %>% 
 		# clean up N/A's
-		mutate(address = str_replace(address, 'N/A', '')) %>% 
-		filter(address!= ' , ,')
+		filter(!str_detect(address, 'N/A')) %>% 
+		# mutate(address = str_replace(address, 'N/A', '')) %>% 
+		filter(!str_detect(address, ', ,')) %>% 
+		filter(!str_detect(address, '\\bNA\\b')) %>% 
+		filter(!str_detect(address, '\\?'))
+
 
 	# set Google Maps API Key (specified in paths.R)
 	set_key(google_api_key)
