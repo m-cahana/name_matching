@@ -498,7 +498,6 @@ match_names_stringdist <- function(names, clean_names,
 # match names if they share a word
 match_names_shared_word <- function(names, ...) {
     count <- 0
-    bad_names <- c()
     words <- get_words(names, ...)
     while (length(words)>0){
         bag <- words[[1]]
@@ -516,15 +515,11 @@ match_names_shared_word <- function(names, ...) {
                     bind_rows(matched_df(name, matches, names, shared_words))
             }
             count <- count + 1
-            words <- words[-1]
-            names <- names[-1]
-        } else {
-            bad_names <- c(bad_names, names[1])
-            words <- words[-1]
-            names <- names[-1]
         }
+        words <- words[-1]
+        names <- names[-1]
     }
-    return (list(matches_df, bad_names))
+    return (matches_df)
 }
 
 # match names using cosine similarity scores, matches only being those that
@@ -535,7 +530,6 @@ match_names_cosine <- function(names, similarity_matrix, threshold) {
     count <- 1
     matrix_size <- length(names)
     while (length(names)>1) {
-        print(count)
 
         name <- names[1]
 
@@ -653,7 +647,7 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
     print('shared word')
     tic()
     name_map_shared_word <- 
-        match_names_shared_word(names) %>% .[[1]]
+        match_names_shared_word(names)
     toc()
 
     #===========
