@@ -453,7 +453,6 @@ match_first_name <- function(df){
     return(matches)
 }
 
-
 # ==============================
 # string distance functions
 # ==============================
@@ -474,8 +473,6 @@ match_names_stringdist <- function(names, clean_names,
         names <- names[-1]
 
         if (c_name=='') {
-            clean_names <- clean_names[-1]
-            names <- names[-1]
             next
         }
 
@@ -533,43 +530,35 @@ match_names_shared_word <- function(names, ...) {
 # match names using cosine similarity scores, matches only being those that
 # are at or exceed the given threshold
 match_names_cosine <- function(names, similarity_matrix, threshold) {
-    count <- 0
-    for (i in 1:dim(names)[1]) {
-        name <- names %>% 
-            slice(i) %>% 
-            select(name) %>% 
-            pull()
-        matches <- c()
-        cosine_sims <- c()
-        indices <- order(similarity_matrix[i,], decreasing=TRUE)[2:11]
-        for (index in indices) {
-            match <- 
-                names %>%
-                slice(index) %>% 
-                select(name) %>% 
-                pull()
-            cosine_sim <- similarity_matrix[i, index]
+    df <- data.table()
 
-            matches <- c(matches, match)
-            indices <- c(indices, index)
-            cosine_sims <- c(cosine_sims, cosine_sim)
+    count <- 1
+    matrix_size <- length(names)
+    while (length(names)>1) {
+        print(count)
+
+        name <- names[1]
+
+        name_table <- 
+            as.data.table(cbind(
+              name = rep(name, length(names)), 
+              match = names, 
+              cosine_similarity = 
+                similarity_matrix[[count]][count:matrix_size]
+                ))
+
+        name_table <- name_table[cosine_similarity >= threshold]
+
+        if(nrow(name_table)>0) {
+            df <- rbindlist(list(df, name_table))
         }
-        if (count==0){
-            df <- 
-                tibble(name = rep(name,10), match = matches,
-                cosine_similarity = cosine_sims)
-        } else {
-            df <- 
-                df %>% 
-                bind_rows(tibble(name = rep(name,10), match = matches,
-                cosine_similarity = cosine_sims))
-        }
+
+        names <- names[-1]
         count <- count + 1
     }
-    df <- 
-        df %>% 
-        filter(cosine_similarity>=threshold)
-    return (df)
+    df <- as_tibble(df) %>% filter(name!=match)
+
+    return(df)
 }
 
 # determine inverse-document frequency of word in list of names
@@ -637,12 +626,17 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
     tfidf <- TfIdf$new()
     dtm_tfidf <- fit_transform(dtm, tfidf)
 
-    similarity_matrix <- sim2(x = dtm_tfidf, method = 'cosine', norm = 'l2')
+    similarity_matrix <- 
+        sim2(x = dtm_tfidf, method = 'cosine', norm = 'l2') %>% 
+        as.matrix() %>%     
+        as.data.table()  
+
+    full_names <- pull(names, name)
 
     print('cosine similarity')
     tic()
-    name_map_cosine_similarity <- match_names_cosine(names, similarity_matrix, 
-        threshold = cosine_threshold)
+    name_map_cosine_similarity <- match_names_cosine(full_names, 
+      similarity_matrix, cosine_threshold)
     toc()
 
     #===========
@@ -764,7 +758,7 @@ match_names <- function(df, output_file, cosine_threshold = 0.4,
     tfidf <- TfIdf$new()    
     dtm_tfidf <- fit_transform(dtm, tfidf)  
 
-     similarity_matrix <-   
+    similarity_matrix <-   
         sim2(x = dtm_tfidf, method = "cosine", norm = "l2") %>%     
         as.matrix() %>%     
         as.data.table()     
