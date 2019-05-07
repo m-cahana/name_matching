@@ -87,8 +87,8 @@ rf_predict <- function(df, train_file_path) {
 # maximizes information gain (by applying a DT)
 rf_cutoff <- function(train_file_path) {
 	sample <- read_csv(train_file_path)
-	train <- sample %>% slice(1:round((dim(sample)[1] * 0.8)))
-	test <- sample %>% slice(round((dim(sample)[1] * 0.8)):dim(sample)[1])
+	train <- sample %>% sample_n(round((dim(sample)[1] * 0.8)))
+	test <- sample %>% anti_join(train)
 	func <- 
 		paste("shared_words", "cosine_similarity", 
 			"jw_distance", "human_jw_distance", 
