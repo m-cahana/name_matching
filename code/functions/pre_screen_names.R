@@ -23,6 +23,7 @@ source(file.path(root, "data.R"))
 library(igraph)
 library(tidyverse)
 library(sf)
+library(rpart)
 
 #===========
 # functions
@@ -76,10 +77,40 @@ rf_predict <- function(df, train_file_path) {
   		predict2(func, df) %>%
   		as_tibble() %>%
   		bind_cols(df, .) %>% 
-  		mutate(rf_prob = predictions) %>% 
-  		select(-predictions)
+  		rename(rf_prob = predictions) 
 
   	return(df)
+}
+
+# determines RF cutoff point by subsetting train data into train/validation sets
+# applying trained RF onto validation set, and selecting cutoff point that 
+# maximizes information gain (by applying a DT)
+rf_cutoff <- function(train_file_path) {
+	sample <- read_csv(train_file_path)
+	train <- sample %>% slice(1:round((dim(sample)[1] * 0.8)))
+	test <- sample %>% slice(round((dim(sample)[1] * 0.8)):dim(sample)[1])
+	func <- 
+		paste("shared_words", "cosine_similarity", 
+			"jw_distance", "human_jw_distance", 
+			"word_count", "sum_n", sep = "+") %>%
+		paste("keep", ., sep = "~") %>%
+		as.formula()
+	rf <-
+		func %>%
+  		regression_forest2(train)
+  	test <- 
+  		rf %>%
+  		predict2(func, test) %>%
+  		as_tibble() %>%
+  		bind_cols(test, .) %>% 
+  		rename(rf_prob = predictions) 
+
+  	dt <- rpart(keep ~ rf_prob, 
+  		data = test, method = 'class', control = list(maxdepth = 1))
+
+  	cutoff <- dt$splits[,'index']
+
+  	return(cutoff)
 }
 
 # determine Euclidean distance between a (max, min) point and 
@@ -171,12 +202,12 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		reviewed_pairs <- 
 			reviewed_files %>% 
 			map_df(read_csv) %>% 
-			select(name, match, keep) 
+			dplyr::select(name, match, keep) 
 		previous_non_pairs <- 
 			name_matches %>% 
 			inner_join(filter(reviewed_pairs, keep == 0), 
 				by = c('name', 'match')) %>% 
-			select(-c('keep.x', 'keep.y', 'n.x', 'n.y'))
+			dplyr::select(-c('keep.x', 'keep.y', 'n.x', 'n.y'))
 	}
 
 	# if we already did some human review on these matches, incorporate it, 
@@ -255,6 +286,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	# verify name matches that have a low match probability according to a 
 	# trained random forest (rf) model 
 	if(file.exists(file.path(ddir, 'training', 'leases_sample.csv'))) {
+		cutoff <- rf_cutoff(file.path(ddir, 'training', 'leases_sample.csv'))
 		name_matches <- 
 			name_matches %>% 
 			mutate(human_jw_distance = if_else(is.na(human_jw_distance), 1, 
@@ -263,7 +295,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 				str_count(match, '\\w+')) %>% 
 			rf_predict(file.path(ddir, 'training', 
 				'leases_sample.csv')) %>% 
-			mutate(keep = ifelse((rf_prob<=0.2 & is.na(keep)), 0, keep))
+			mutate(keep = ifelse((rf_prob<cutoff & is.na(keep)), 0, keep))
 	}	
 
 	# write out notification files for pairs previously marked as incorrect
