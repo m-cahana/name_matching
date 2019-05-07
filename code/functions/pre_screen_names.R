@@ -64,7 +64,8 @@ rf_predict <- function(df, train_file_path) {
 	train <- read_csv(train_file_path)
 	func <- 
 		paste("shared_words", "cosine_similarity", 
-			"jw_distance", sep = "+") %>%
+			"jw_distance", "human_jw_distance", 
+			"word_count", "sum_n", sep = "+") %>%
 		paste("keep", ., sep = "~") %>%
 		as.formula()
 	rf <-
@@ -253,11 +254,15 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 
 	# verify name matches that have a low match probability according to a 
 	# trained random forest (rf) model 
-	if(file.exists(file.path(ddir, 'training', 'lease_match_sample.csv'))) {
+	if(file.exists(file.path(ddir, 'training', 'leases_sample.csv'))) {
 		name_matches <- 
 			name_matches %>% 
+			mutate(human_jw_distance = if_else(is.na(human_jw_distance), 1, 
+				human_jw_distance)) %>% 
+			mutate(word_count = str_count(name, '\\w+') + 
+				str_count(match, '\\w+')) %>% 
 			rf_predict(file.path(ddir, 'training', 
-				'lease_match_sample.csv')) %>% 
+				'leases_sample.csv')) %>% 
 			mutate(keep = ifelse((rf_prob<=0.2 & is.na(keep)), 0, keep))
 	}	
 
