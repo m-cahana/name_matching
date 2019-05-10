@@ -218,7 +218,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			pre_existing_name_matches %>% 
 			bind_rows(name_matches) %>% 
 			distinct(name, match, .keep_all = T) %>% 
-			arrange(importance_dist)
+			arrange(importance_dist) %>% 
+			select(-rf_prob)
 	}
 
 	# if we already have some group matches (that is, verified matches from 
@@ -271,8 +272,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		name_matches <- 
 			name_matches %>% 
 			left_join(redundant_edges, by = c('name', 'match')) %>% 
-			mutate(keep = ifelse(is.na(prior_check), keep, prior_check)) %>% 
-			select(-prior_check)
+			mutate(keep = ifelse(is.na(prior_check), keep, prior_check)) 
 
 		# get list of inferred edges implied by completeness to be correct but
 		# not explicitly marked with keep == 1
