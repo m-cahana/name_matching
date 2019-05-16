@@ -4,7 +4,7 @@
 #===========
 # inputs: 
 #===========
-# landtrac_tx
+# all_leases.Rds
 
 #===========
 # needed libraries
@@ -31,20 +31,21 @@ source(file.path(root, 'code', 'functions', 'match_names.R'))
 # data read in
 #===========
 
-leases <- 
-	readRDS(file.path(rdir, 'leases', 'landtrac_tx.Rds')) %>% 
-	st_set_geometry(NULL) %>% 
-	as_tibble()
+all_leases <- 
+	readRDS(file.path(rdir, 'leases', 'all_leases.Rds'))
 
 #===========
 # match names 
 #===========
 
+# all
 df <- 
-    leases %>% 
+    all_leases %>% 
     count(grnte_al) %>% 
     rename(name = grnte_al) 
 
 output_file <- file.path(ddir, 'matches', 'names', 'leases_name_matches.csv')
 
 match_names(df, output_file)
+
+
