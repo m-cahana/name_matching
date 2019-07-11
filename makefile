@@ -1,4 +1,4 @@
-# To run this makefile, make sure you have a local data.txt that holds 
+# To run this makefile, make sure you have a local data.txt that holds
 # the directory path to the data
 
 # ===========================================================================
@@ -51,14 +51,14 @@ $(DATA_gen)/matches/names/modeled_name_matches.csv: \
 	$(DATA_raw)/modeled_prices.Rds \
 	$(DATA_raw)/names_edited.xlsx \
 	$(CDIR_functions)/match_names.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 $(DATA_gen)/matches/names/leases_name_matches.csv: \
 	$(CDIR_matching)/match_leases_names.R \
 	$(DATA_raw)/leases/all_leases.Rds \
 	$(CDIR_functions)/match_names.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
@@ -70,18 +70,18 @@ $(DATA_gen)/matches/addresses/modeled_address_matches.csv: \
 	$(DATA_raw)/modeled_prices.Rds \
 	$(DATA_raw)/addresses/nph_oper_addr-2017-04-30.Rdata \
 	$(CDIR_functions)/match_addresses.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 $(DATA_gen)/matches/addresses/leases_address_matches.csv: \
 	$(CDIR_matching)/match_leases_addresses.R \
 	$(DATA_raw)/leases/all_leases.Rds \
 	$(CDIR_functions)/match_addresses.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
-# Address/pre-checked matches as verification for name matches 
+# Address/pre-checked matches as verification for name matches
 # ===========================================================================
 
 $(DATA_rev)/modeled_matches.csv: \
@@ -93,7 +93,7 @@ $(DATA_rev)/modeled_matches.csv: \
 	$(DATA_gen)/matches/names/modeled_name_matches.csv \
 	$(CDIR_functions)/pre_screen_names.R \
 	$(CDIR_functions)/random_forest_utils.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 $(DATA_rev)/leases_matches.csv: \
@@ -103,7 +103,7 @@ $(DATA_rev)/leases_matches.csv: \
 	$(DATA_gen)/matches/addresses/leases_address_matches.csv \
 	$(CDIR_functions)/pre_screen_names.R \
 	$(CDIR_functions)/random_forest_utils.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
@@ -115,7 +115,7 @@ $(DATA_gen)/grouped_matches/all_groups.csv: \
 	$(DATA_rev)/leases_matches.csv \
 	$(DATA_rev)/modeled_matches.csv \
 	$(CDIR_functions)/group_matches.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
@@ -126,7 +126,7 @@ $(DATA_rev)/group_name_matches.csv: \
 	$(CDIR_matching)/match_group_names.R \
 	$(DATA_gen)/grouped_matches/all_groups.csv \
 	$(CDIR_functions)/match_names.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
@@ -138,7 +138,7 @@ $(DATA_gen)/grouped_matches/grouped_groups.csv : \
 	$(DATA_gen)/grouped_matches/all_groups.csv \
 	$(DATA_rev)/group_name_matches.csv \
 	$(CDIR_functions)/group_matches.R \
-	$(CDIR_functions)/utils.R 
+	$(CDIR_functions)/utils.R
 	Rscript $<
 
 # ===========================================================================
@@ -148,6 +148,5 @@ $(DATA_gen)/grouped_matches/grouped_groups.csv : \
 $(DATA_gen)/notifications/name_matching_summary.html : \
 	$(CDIR_markdown_summary)/generate_name_matching_summary.R \
 	$(DATA_gen)/grouped_matches/grouped_groups.csv \
-	$(CDIR_markdown_summary)/name_matching_summary.Rmd 
+	$(CDIR_markdown_summary)/name_matching_summary.Rmd
 	Rscript $<
-

@@ -30,10 +30,10 @@ source(file.path(root, 'code', 'functions', 'group_matches.R'))
 # data read-in
 #===========
 
-df <- 
-	list.files(vdir, full.names = TRUE) %>% 
-	.[.!=file.path(vdir, 'group_name_matches.csv')] %>% 
-	map_df(read_csv) 
+df <-
+	list.files(vdir, full.names = TRUE, recursive = TRUE, pattern = "*.csv") %>% 
+	.[.!=file.path(vdir, 'group_name_matches.csv')] %>%
+	map_df(read_csv)
 
 output_file <- file.path(ddir, 'grouped_matches', 'all_groups.csv')
 
