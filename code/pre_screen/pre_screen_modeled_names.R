@@ -36,12 +36,11 @@ source(file.path(root, 'code', 'functions', 'pre_screen_names.R'))
 #===========
 
 desc <- read_fst(file.path(rdir, 'pden_desc-2018-09-26.fst'), 
-    columns = c('api_no', 'curr_oper_id', 'curr_oper_no', 'curr_oper_name')) %>% 
+    columns = c('api_no', 'curr_oper_id', 'curr_oper_no', 
+        'common_oper_name')) %>% 
         mutate(api_no = str_replace_all(api_no, '-', '') %>% 
         stri_pad_right(14, 0)) 
 modeled <- readRDS(file.path(rdir, 'modeled_prices.Rds')) 
-cleaned_300 <- read_excel(file.path(rdir, 'names_edited.xlsx')) %>% 
-    select(curr_oper_name, replacement)
 
 #===========
 # verify name matches with addresses 
@@ -56,11 +55,7 @@ lease_count <-
     modeled %>% 
     select(api_no, county, state, shale_play, total_prod, price_per_boe) %>% 
     inner_join(desc, by='api_no') %>% 
-    left_join(cleaned_300, by='curr_oper_name') %>% 
-    mutate(replacement = 
-        if_else(is.na(replacement), curr_oper_name, replacement)) %>% 
-    select(-curr_oper_name) %>% 
-    rename(name = replacement) %>% 
+    rename(name = common_oper_name) %>% 
     count(name)
 
 pre_screen_names(name_matches, address_matches, lease_count, output_file)

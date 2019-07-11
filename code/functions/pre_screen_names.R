@@ -22,16 +22,21 @@ source(file.path(root, "data.R"))
 #===========
 library(igraph)
 library(tidyverse)
+library(sf)
+library(rpart)
 
 #===========
 # functions
 #===========
 
-create_edge <- function(name, match) {
-	edge <- c(name, match)
-	return (edge)
-}
+# TC's random forest functions
+source(file.path(root, "code", "functions", "random_forest_utils.R"))
 
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
+
+# given a cluster of names, enumerates all possible edges in a cluster
+# such that the cluster is complete 
 all_edges <- function(cluster) {
 	edges <- 
 		cluster %>% 
@@ -44,6 +49,8 @@ all_edges <- function(cluster) {
 	return (unlist(map2(edges$name, edges$match, create_edge)))
 }
 
+# takes in a list of edge pair vectors (vectors with a name and match)
+# and converts it to a tibble with name and match columns 
 list_to_df_edge <- function(l) {
 	df <- 
 		l %>% 
@@ -53,22 +60,113 @@ list_to_df_edge <- function(l) {
 	return (df)
 }
 
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
+# train random forest (RF) using sample data, and apply predictions onto df
+rf_predict <- function(df, train_file_path) {
+	train <- read_csv(train_file_path)
+	func <- 
+		paste("shared_words", "cosine_similarity", 
+			"jw_distance", "human_jw_distance", 
+			"word_count", "sum_n", sep = "+") %>%
+		paste("keep", ., sep = "~") %>%
+		as.formula()
+	rf <-
+		func %>%
+  		regression_forest2(train)
+  	df <- 
+  		rf %>%
+  		predict2(func, df) %>%
+  		as_tibble() %>%
+  		bind_cols(df, .) %>% 
+  		rename(rf_prob = predictions) 
+
+  	return(df)
+}
+
+# determines RF cutoff point by subsetting train data into train/validation sets
+# applying trained RF onto validation set, and selecting cutoff point that 
+# maximizes information gain (by applying a DT)
+rf_cutoff <- function(train_file_path) {
+	sample <- read_csv(train_file_path)
+	train <- sample %>% sample_n(round((dim(sample)[1] * 0.8)))
+	test <- sample %>% anti_join(train)
+	func <- 
+		paste("shared_words", "cosine_similarity", 
+			"jw_distance", "human_jw_distance", 
+			"word_count", "sum_n", sep = "+") %>%
+		paste("keep", ., sep = "~") %>%
+		as.formula()
+	rf <-
+		func %>%
+  		regression_forest2(train)
+  	test <- 
+  		rf %>%
+  		predict2(func, test) %>%
+  		as_tibble() %>%
+  		bind_cols(test, .) %>% 
+  		rename(rf_prob = predictions) 
+
+  	dt <- rpart(keep ~ rf_prob, 
+  		data = test, method = 'class', control = list(maxdepth = 1))
+
+  	cutoff <- dt$splits[,'index']
+
+  	return(cutoff)
+}
+
+# determine Euclidean distance between a (max, min) point and 
+# some specified importance cutoffs
+calculate_distance <- function(df, max_threshold, min_threshold, 
+	min_max_ratio = NA) {
+	# create the rectangular polygon that represents the area in which
+	# both the min and max threshold critera are met
+	valid_polygon <- st_polygon(list(rbind(c(max_threshold, min_threshold),
+		c(max_threshold, 1e10),
+		c(1e10, 1e10), 
+		c(1e10,min_threshold), 
+		c(max_threshold, min_threshold))))
+	if (!is.na(min_max_ratio)) {
+		# create the traingular polygon that represents the area in which
+		# the min max ratio is satisfied
+		ratio <- st_polygon(list(rbind(c(0,0), 
+			c(1e10,1e10*min_max_ratio), 
+			c(0,1e10*min_max_ratio), c(0,0))))
+		# declare the valid polygon to the be intersection of the previous
+		# rectangular polygon and this triangular one
+		valid_polygon <- st_intersection(valid_polygon, ratio)
+	}
+
+	df <-
+		df %>% 
+		rowwise() %>% 
+		# determine importance distance as distance from (max, min) point to
+		# the valid polygon 
+		mutate(importance_dist = as.double(st_distance(
+			st_point(c(max_n, min_n)), valid_polygon)))
+
+	return (df)
 }
 
 pre_screen_names <- function(name_matches, address_matches, lease_count, 
-	output_file) {
+	output_file, human_jw_threshold = .6, human_cos_threshold = .6) {
+
+	# flag matches where human name distance is high
+	# fill in missing human match metrics
+	name_matches <-
+	  name_matches %>% 
+	  mutate(keep = if_else(human_jw_distance > human_jw_threshold &
+	  	human_cosine_similarity > human_cos_threshold & is.na(initials_match), 
+	  	0, as.double(NA))) %>% 
+	  replace_na(list(human_jw_distance = 1, human_cosine_similarity = 1, 
+	  	initials_match = FALSE))
 
 	# verify name matches that have an address match, add in lease counts, 
 	# calculate closeness scores and minimum n's for each pair, adjust n's to 
-	# avoid double counting, and create cumulative percentage coverage
+	# avoid double counting 
+	# also add in count of total number of words in match pair
 	name_matches <- 
 		name_matches %>% 
 		left_join(address_matches, by = c('name','match')) %>% 
-	    mutate(keep = if_else(!is.na(address), 1, as.double(NA))) %>% 
+	    mutate(keep = if_else(!is.na(address), 1, keep)) %>% 
 	    left_join(lease_count, by = 'name') %>% 
 	    left_join(lease_count, by = c('match' = 'name')) %>%
 	    rowwise() %>% 
@@ -82,9 +180,22 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	    mutate(n.y = ifelse(duplicated(match), 0, n.y)) %>% 
 	    mutate(n.y = ifelse(match %in% .$name, 0, n.y)) %>% 
 	    replace_na(list(n.x = 0, n.y = 0)) %>% 
-	    mutate(n = n.x + n.y) %>% 
-	    arrange(desc(n)) %>% 
-	    mutate(pct_coverage = cumsum(n)/sum(n)) 
+	    mutate(word_count = str_count(name,'\\w+') + str_count(match, '\\w+'))
+
+	# mark match pairs we deem "important" based on their count coverage
+	# note that the importance_dist variable will represent the distance 
+	# an (x,y) pair is from being within both min and max thresholds 
+	# (x here is max_n, and y min_n), and the min_max_ratio line, if specified
+	count_deciles <- lease_count %>% pull() %>% quantile(probs = seq(.1,1,.1))
+	seventieth_percentile <- count_deciles[7]
+	ninetieth_percentile <- count_deciles[9]
+	min_max_ratio = 0.10
+
+	name_matches <- 
+		name_matches %>% 
+		calculate_distance(ninetieth_percentile, seventieth_percentile, 
+			min_max_ratio) %>% 
+		arrange(importance_dist)
 
 	# determine pairs that are now verified as correct but previously were not, 
 	# if relevant 
@@ -96,12 +207,12 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		reviewed_pairs <- 
 			reviewed_files %>% 
 			map_df(read_csv) %>% 
-			select(name, match, keep) 
+			dplyr::select(name, match, keep) 
 		previous_non_pairs <- 
 			name_matches %>% 
 			inner_join(filter(reviewed_pairs, keep == 0), 
 				by = c('name', 'match')) %>% 
-			select(-c('keep.x', 'keep.y', 'n.x', 'n.y', 'n', 'pct_coverage'))
+			dplyr::select(-c('keep.x', 'keep.y', 'n.x', 'n.y'))
 	}
 
 	# if we already did some human review on these matches, incorporate it, 
@@ -112,10 +223,8 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			pre_existing_name_matches %>% 
 			bind_rows(name_matches) %>% 
 			distinct(name, match, .keep_all = T) %>% 
-			select(-n) %>% 
-			mutate(n = n.x + n.y) %>% 
-		    arrange(desc(n)) %>% 
-		    mutate(pct_coverage = cumsum(n)/sum(n)) 
+			arrange(importance_dist) %>% 
+			select(-rf_prob)
 	}
 
 	# if we already have some group matches (that is, verified matches from 
@@ -168,8 +277,7 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 		name_matches <- 
 			name_matches %>% 
 			left_join(redundant_edges, by = c('name', 'match')) %>% 
-			mutate(keep = ifelse(is.na(prior_check), keep, prior_check)) %>% 
-			select(-prior_check)
+			mutate(keep = ifelse(is.na(prior_check), keep, prior_check)) 
 
 		# get list of inferred edges implied by completeness to be correct but
 		# not explicitly marked with keep == 1
@@ -178,8 +286,22 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 			anti_join(filter(reviewed_pairs, keep ==1), 
 				by = c('name', 'match')) %>% 
 			select(-prior_check)
-
 	}
+
+	# verify name matches that have a low match probability according to a 
+	# trained random forest (rf) model 
+	if(file.exists(file.path(ddir, 'training', 'leases_sample.csv'))) {
+		cutoff <- rf_cutoff(file.path(ddir, 'training', 'leases_sample.csv'))
+		name_matches <- 
+			name_matches %>% 
+			mutate(human_jw_distance = if_else(is.na(human_jw_distance), 1, 
+				human_jw_distance)) %>% 
+			mutate(word_count = str_count(name, '\\w+') + 
+				str_count(match, '\\w+')) %>% 
+			rf_predict(file.path(ddir, 'training', 
+				'leases_sample.csv')) %>% 
+			mutate(keep = ifelse((rf_prob<cutoff & is.na(keep)), 0, keep))
+	}	
 
 	# write out notification files for pairs previously marked as incorrect
 	# but now known to be corrrect, and pairs inferred to be correct via cluster
@@ -206,8 +328,10 @@ pre_screen_names <- function(name_matches, address_matches, lease_count,
 	} 
 
 	if (length(reviewed_files>0)) {
-		write_csv(previous_non_pairs, file.path(ddir, 
+		if (dim(previous_non_pairs)[1]>0) {
+			write_csv(previous_non_pairs, file.path(ddir, 
 				'notifications', 'previous_non_pairs.csv'))
+		}
 	}
 	if (file.exists(file.path(ddir, 'grouped_matches', 'all_groups.csv'))) {
 		write_csv(inferred_matches, file.path(ddir, 

@@ -35,14 +35,14 @@ leases_matches <- read_csv(file.path(vdir, 'leases_matches.csv'))
 
 lease_keeps <- 
 	leases_matches %>% 
-	filter(pct_coverage<=.95 | min_n >=100) %>%
+	filter(importance_dist==0) %>%
 	filter(!is.na(keep)) %>% 
 	dim %>% 
 	.[1]
 
 lease_total <- 
 	leases_matches %>% 
-	filter(pct_coverage<=.95 | min_n >=100) %>% 
+	filter(importance_dist==0) %>% 
 	dim %>% 
 	.[1]
 
@@ -52,14 +52,14 @@ if (lease_left==0) {lease_done = TRUE} else (lease_done = FALSE)
 
 modeled_keeps <- 
 	modeled_matches %>% 
-	filter(pct_coverage<=.95 | min_n >=100) %>% 
+	filter(importance_dist==0) %>% 
 	filter(!is.na(keep)) %>% 
 	dim %>% 
 	.[1]
 
 modeled_total <- 
 	modeled_matches %>% 
-	filter(pct_coverage<=.95 | min_n >=100) %>% 
+	filter(importance_dist==0) %>% 
 	dim %>% 
 	.[1]
 
@@ -84,26 +84,22 @@ if (grouped_left==0) {grouped_done = TRUE} else {grouped_done = FALSE}
 ### Modeled Review
 `r if(modeled_done){
 	paste("All **", modeled_keeps, 
-		"** potential matches that need review in order to 
-		acheive **95%* coverage of the match data have been reviewed.", 
+		"** potential matches that need review have been reviewed.", 
 	sep = '')} else {
 	paste("Only **", modeled_keeps, "** potential matches have been reviewed, 
-		of the **", modeled_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data and cover all matches with at least 
-		100 observations on both sides. \n \n **", modeled_left, 
+		of the **", modeled_total, "** that need to be reviewed. 
+		\n \n **", modeled_left, 
 		"** matches left to review.",  sep = '')
 }`
 
 ### Lease Review
 `r if(lease_done){
 	paste("All **", lease_keeps, 
-		"** potential matches that need review in order to 
-		acheive **95%* coverage of the match data have been reviewed.", 
+		"** potential matches that need review have been reviewed.", 
 	sep = '')} else {
 	paste("Only **", lease_keeps, "** potential matches have been reviewed, 
-		of the **", lease_total, "** that need to be reviewed to achieve *95%* 
-		coverage of the match data and cover all matches with at least 
-		100 observations on both sides. \n \n **", lease_left, 
+		of the **", lease_total, "** that need to be reviewed. 
+		\n \n **", lease_left, 
 		"** matches left to review.",  sep = '')
 }`
 

@@ -51,7 +51,7 @@ For each dataset $d \in \{leases, flatfiles\}$, in round $t =  1$:
      \begin{enumerate}
     \item Shared word - match one firm name to another if they share a word that isn't a common word
     \item Cosine similarity - process firm names using Bag of words, apply a tf-idf (term frequency–inverse document frequency) weighting to each vector of words, and match firm word vectors using cosine similarity scores, with each potential match being declared a likely match if its score is or exceeds $0.4$ 
-     \item Jaro distance - compute the Jaro-Winkler distance between every firm name and every other firm name, declaring likely matches to be those name/match pairs with J-W scores at or below $0.15$. 
+     \item Jaro distance - compute the Jaro-Winkler distance between every firm name and every other firm name, declaring likely matches to be those name/match pairs with J-W scores at or below $0.15$
     \end{enumerate}
     
     \item Clean firm addresses 
@@ -67,7 +67,26 @@ For each dataset $d \in \{leases, flatfiles\}$, in round $t =  1$:
     \item If two firms are declared to be a likely match via string comparison methods, and they also have a perfect address match, then they are marked as correct
     \end{enumerate}
     
-    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, with the $95\%$ representing the fraction of observations (of leases or wells) covered by reviewed name/match pairs relative to all observations covered in the name matches dataset, not the number of actual name/match pairs relative to all name/match pairs. Also review name/match pairs in which both sides of the pair exceed 100 of observations. 
+    \item Pre-screen firm name matches using human names
+    \begin{enumerate}
+    \item Using existing human names datasets, classify firm names as either humans or companies. 
+    \item Within human name pairs, check if the last names match up
+    \item For pairs with matching last names, calculate the Jaro distance and cosine similarity of the first names, and whether or not the initials match up. If two human first names have Jaro distance and cosine similarity over $.6$ and initials do not match up, we can declare that these are not a match 
+    \end{enumerate}
+    
+    \item Pre-screen firm name matches using a random forest model
+    \begin{enumerate}
+    \item Classify a random subset of 1,000 potential matches to be fed into a random forest algorithm. The algorithm takes in all the string distance metrics generated in prior steps, and generates 500 regression trees from which to average out a prediction. Since the random forest makes use of regression trees and the target variable here is binary, it outputs scores from 0 to 1, where scores closer to 1 imply a greater likelihood of correct match
+    \item Code all matches with random forest predictions $<= 0.2$ as incorrect, unless they've already been verified as correct by an address match (a rare edge case). This threshold is chosen due to the distribution of correct/incorrect matches across prediction scores in our sample data - $80\%$ of all potential matches in the sample are at or below the $0.2$ threshold, and of those matches, over $95\%$ are incorrect
+    
+    \end{enumerate}
+    
+     \item Review remaining firm name matches manually, reviewing only the matches we deem to be "important". What constitutes an "important" match is an open question, and our answer is going to inevitably be somewhat arbitrary. Our current suggestion is some combination of the following three requirements:
+    \begin{enumerate}
+    \item Pairs with a maximum $n$ $>=$ the 90th percentile of the $n$ distribution. For \textit{leases}, for example, the 90th percentile is 87 leases
+    \item Pairs with a minimum  $n$ $>=$ the 70th percentile of the $n$ distribution. For \textit{leases}, for example, the  70th  percentile is 10 leases
+    \item Pairs with a $\frac{minimum(n)}{maximum(n)} >= 0.10$
+    \end{enumerate} 
     
     \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$ and generate new firm groups using graph theory
     
@@ -89,20 +108,24 @@ For each dataset $d \in \{leases, flatfiles, ... \}$, in round $t > 1$:
 
     \item Pre-screen firm name matches using firm address matches
     
+    \item Pre-screen firm name matches using human names
+    
+    \item Pre-screen firm name matches using a random forest model
+    
     \item Pre-screen firm name matches using firm groups from round $t - 1$
     
-    \item Review remaining firm name matches manually, reviewing only the matches necessary to achieve $95\%$ coverage of matches, and the matches in which both sides of the pair exceed 100 observations. 
+    \item Review remaining firm name matches manually, reviewing only the matches we deem to be "important"
     
     \item Combine together matches from all datasets $d \in \{leases, flatfiles\}$ and generate new firm groups using graph theory
     
     \item Determine whether any firm group names match one another using string comparison methods and subsequent human review
     
-    \item Incorporate reviewed group name matches back into the original firm group graphs to ensure that duplicate clusters of firms (clusters referring to the same entity) are joined together as one 
+    \item Incorporate reviewed group name matches back into the original firm group graphs to ensure that duplicate clusters of firms (clusters referring to the same entity) are joined together as one
 \end{enumerate}
 
 \section{Firm Name Cleaning}
 
-DI has already done some of cleaning for lessee and operator names.
+DI has already done some of cleaning for lessee and operator names:
 \begin{itemize}
     \item landtrac leases: "alias grantee" is the standardized version of "grantee".
     \item pden\_desc: "common oper name" is the standardized version of "reported oper name".
@@ -146,6 +169,20 @@ If two firms are declared to be a likely match via string comparison methods, an
 
 Note that if round $t > 1$, and we find that matches that are now verified using addresses were coded in a prior round by a human as incorrect, then we output these matches to the file "generated\_data/notifications/previous\_non\_pairs.csv" for the user to review if desired. 
 
+\subsection{Verifying firm name matches using human names}
+
+Using datasets on common male first names, female first names, and surnames, we  classify firm names as either being humans or companies (i.e. "CLEO THOMPSON" is a human, but "CHESAPEAKE" is not, and we know "CLEO THOMPSON" is a human because his name exists in our first name/surname data). We then limit ourselves to the subset of firm names deemed to be human names, and order those names such that first names are followed by surnames and preceded by initials (if any exist). 
+
+We then compare each human name to every other human name, checking if the humans' last names match up. For human pairs with matching last names, we calculate the Jaro-Winkler distance and cosine similarity between both humans' first names, and also determine whether or not the humans' initials match up. If two human first names have a Jaro-Winkler distance and cosine similarity (note that the cosine similarity metric we use here is flipped, so name pairs with scores closer to 1 are less similar) over $0.6$, and initials that do not match up, we declare the pairs to \textit{not} be a match. This conditional statement was chosen by evaluating a decision tree on a classified subset of potential human name matches, and selecting a branch of that tree in which testing data was perfectly split into incorrect matches only. The branch we selected split data according to the three requirements specified above. 
+
+\subsection{Verifying firm name matches using a random forest model}
+
+We've classified a random subset of 1,000 potential matches to be fed into a random forest algorithm. These 1,000 potential matches were classified by Michael Cahana. The algorithm takes in all the string distance metrics generated in prior steps, and generates 500 regression trees from which to average out a prediction. The algorithm makes use of 2-fold cross validation to mitigate over-fitting. Since the random forest makes use of regression trees and the target variable here is binary, it outputs scores from 0 to 1, with scores closer to 1 implying a greater likelihood of correct match. 
+
+We apply this random forest model onto our entire dataset of potential matches. We code all matches with random forest predictions $<= 0.2$ as incorrect, unless they've already been verified as correct by an address match (a rare edge case). This threshold is chosen due to the distribution of correct/incorrect matches across prediction scores in our sample data - $80\%$ of all potential matches in the sample are at or below the $0.2$ threshold, and of those matches, over $95\%$ are incorrect. Note that this method is not perfect at classifying incorrect matches, and we apply it assuming we can live with some false negative classifications. If that assumption changes, and we decide that we cannot incorrectly classify a match as being incorrect, then we should abandon this pre-screening method. 
+
+After verifying many firm names to be incorrect using random forests, the amount of matches humans need to review is cut down significantly. 
+
 \subsection{Verifying firm name matches using firm groups from round $t - 1$}
 
 If round $t > 1$, then we utilize previously determined clusters of group matches to verify firm name matches that have already been marked as correct in prior rounds. Here we take clusters of group matches and expand them out to be complete subgraphs, such that a cluster with nodes \{A,B,C\} and edges A-B, B-C is expanded to also contain the edge A-C. 
@@ -165,7 +202,7 @@ Matches will be separated by dataset and saved to the "reviewed\_data" folder, i
 
 We want to group together matches under a shared name. For example, if the match datasets in "reviewed\_data" tell us that "CHESAPEAKE" is matched to "CHESAPEAKE MARCELLUS", and "CHESAPEAKE MARCELLUS" is matched to "CHESAPEAKE UTICA", we want to map all three names to one common name (presumably "CHESAPEAKE"). We do this using the R \href{https://cran.r-project.org/web/packages/igraph/igraph.pdf}{igraph} library. 
 
-If we were to construct a graph with the nodes "CHESAPEAKE MARCELLUS", "CHESAPEAKE UTICA", and "CHESAPEAKE", and edges between "CHESAPEAKE"/"CHESAPEAKE MARCELLUS" and "CHESAPEAKE MARCELLUS"/"CHESAPEAKE UTICA", all three nodes are said to form a connected component (what igraph often refers to as a cluster). 
+If we were to construct a graph with the nodes "CHESAPEAKE MARCELLUS", "CHESAPEAKE UTICA", and "CHESAPEAKE", and edges between "CHESAPEAKE"/ "CHESAPEAKE MARCELLUS" and "CHESAPEAKE MARCELLUS"/ "CHESAPEAKE UTICA", all three nodes are said to form a connected component (what igraph often refers to as a cluster). 
 
 This is essentially the graph theory magic we do, for all matches in "reviewed\_data". Basically, we read in and combine all matches, then use igraph to form a massive graph of nodes and edges, with nodes being firm names and edges being name/match pairs. Our code then determines connected components and assigns every name within a connected component the name of the firm that is first in alphabetical order within that component. 
 

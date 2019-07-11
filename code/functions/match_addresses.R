@@ -1,6 +1,5 @@
 # Created by Michael Cahana in early Feb. 2019
 # Geocodes addresses of specified file and determines matches accordingly
-# To be called by master.csv
 
 #===========
 # inputs: 
@@ -31,6 +30,9 @@ library(tictoc)
 # functions
 #===========
 
+# commonly used functions (alpha_order and create_edge)
+source(file.path(root, "code", "functions", "utils.R"))
+
 # geocode address using googleway 
 geocode <- function(address, row) {
 	print(paste(row, address, sep=' - ')) 
@@ -56,14 +58,6 @@ code_address_chunk <- function(address_chunk) {
 		select(-c(n, row)) 
 	write_csv(address_chunk, file.path(ddir, 'address_backups', 
 		'coded_addresses.csv'), append=T)
-}
-
-# order two words alphabetically, returning the word in the order (1 or 2) 
-# specified
-alpha_order <- function(name, match, order) {
-    vec <- c(name, match)
-    a1 <- sort(vec)[order]
-    return(a1)
 }
 
 match_addresses <- function(df, already_coded_addresses, output_file) {
@@ -136,7 +130,20 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_replace_all(address, '\\+', '')) %>%  
 		mutate(address = str_replace_all(address, '£', '')) %>% 
 		mutate(address = str_replace_all(address, '&', '')) %>%
-		mutate(address = str_replace_all(address, '#', '')) 
+		mutate(address = str_replace_all(address, '#', '')) %>% 
+		mutate(address = str_replace_all(address, '@', '')) %>% 
+		mutate(address = str_replace_all(address, '=', '')) %>% 
+		mutate(address = str_replace_all(address, '\\"', '')) %>% 
+		mutate(address = str_replace_all(address, '`', '')) %>% 
+		mutate(address = str_replace_all(address, '\\[', '')) %>% 
+		mutate(address = str_replace_all(address, '\\]', '')) %>% 
+		# clean up N/A's
+		filter(!str_detect(address, 'N/A')) %>% 
+		# mutate(address = str_replace(address, 'N/A', '')) %>% 
+		filter(!str_detect(address, ', ,')) %>% 
+		filter(!str_detect(address, '\\bNA\\b')) %>% 
+		filter(!str_detect(address, '\\?'))
+
 
 	# set Google Maps API Key (specified in paths.R)
 	set_key(google_api_key)
@@ -147,16 +154,24 @@ match_addresses <- function(df, already_coded_addresses, output_file) {
 		mutate(address = str_trim(str_squish(address))) %>%
 		filter(!(address %in% already_coded_addresses)) %>% 
 		count(address) 
+	cat('*********************************** \n') 
+	print(paste(dim(coded_addresses)[1], 'addresses to code'))
+	cat('*********************************** \n') 
 	if (dim(coded_addresses)[1]>0) {
-		# divide coded addresses into chunks of ~500 rows, such that we save 
-		# geocoding results in increments instead of all at once
-		coded_addresses <- split(coded_addresses, 
-			seq(1,dim(coded_addresses)[1] %/% 500))
-		# geocode chunk by chunk
-		coded_addresses <-
-			coded_addresses %>%  
-			lapply(code_address_chunk) %>% 
-			bind_rows()
+		# if only one new address, don't split into chunks
+		if (dim(coded_addresses[1])==1) {
+			coded_addresses <- code_address_chunk(coded_addresses)
+		} else {
+			# divide coded addresses into chunks of ~100 rows, such that we save 
+			# geocoding results in increments instead of all at once
+			coded_addresses <- split(coded_addresses, 
+				seq(1,dim(coded_addresses)[1] %/% 100))
+			# geocode chunk by chunk
+			coded_addresses <-
+				coded_addresses %>%  
+				lapply(code_address_chunk) %>% 
+				bind_rows()
+		}
 	}
 
 	#===========
