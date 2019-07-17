@@ -36,30 +36,31 @@ all : $(DATA_gen)/notifications/name_matching_summary.html
 # Lease aggregation
 # ===========================================================================
 
-$(DATA_raw)/leases/all_leases.Rds: \
-	$(CDIR_prep)/combine_leases.R \
-	$(lease_csvs)
-	Rscript $<
+# $(DATA_raw)/leases/leases_di.Rds: \
+# 	$(CDIR_prep)/combine_leases.R \
+# 	$(lease_csvs)
+# 	Rscript $<
 
 # ===========================================================================
 # First-stage name match dependencies
 # ===========================================================================
 
-$(DATA_gen)/matches/names/modeled_name_matches.csv: \
-	$(CDIR_matching)/match_modeled_names.R \
-	$(DATA_raw)/pden_desc-2018-09-26.fst \
-	$(DATA_raw)/modeled_prices.Rds \
-	$(DATA_raw)/names_edited.xlsx \
-	$(CDIR_functions)/match_names.R \
-	$(CDIR_functions)/utils.R
-	Rscript $<
-
-$(DATA_gen)/matches/names/leases_name_matches.csv: \
-	$(CDIR_matching)/match_leases_names.R \
-	$(DATA_raw)/leases/all_leases.Rds \
-	$(CDIR_functions)/match_names.R \
-	$(CDIR_functions)/utils.R
-	Rscript $<
+# $(DATA_gen)/matches/names/modeled_name_matches.csv: \
+# 	$(CDIR_matching)/match_modeled_names.R \
+# 	$(DATA_raw)/pden_desc-2018-09-26.fst \
+# 	$(DATA_raw)/modeled_prices.Rds \
+# 	$(DATA_raw)/names_edited.xlsx \
+# 	$(CDIR_functions)/match_names.R \
+# 	$(CDIR_functions)/utils.R
+# 	Rscript $<
+#
+# $(DATA_gen)/matches/names/leases_name_matches.csv: \
+# 	$(CDIR_matching)/match_leases_names.R \
+# 	$(DATA_raw)/leases/leases_di.Rds \
+# 	$(DATA_raw)/leases/leases_jb.Rds \
+# 	$(CDIR_functions)/match_names.R \
+# 	$(CDIR_functions)/utils.R
+# 	Rscript $<
 
 # ===========================================================================
 # First-stage address match dependencies
@@ -72,13 +73,14 @@ $(DATA_gen)/matches/addresses/modeled_address_matches.csv: \
 	$(CDIR_functions)/match_addresses.R \
 	$(CDIR_functions)/utils.R
 	Rscript $<
-
-$(DATA_gen)/matches/addresses/leases_address_matches.csv: \
-	$(CDIR_matching)/match_leases_addresses.R \
-	$(DATA_raw)/leases/all_leases.Rds \
-	$(CDIR_functions)/match_addresses.R \
-	$(CDIR_functions)/utils.R
-	Rscript $<
+# 
+# $(DATA_gen)/matches/addresses/leases_address_matches.csv: \
+# 	$(CDIR_matching)/match_leases_addresses.R \
+# 	$(DATA_raw)/leases/leases_di.Rds \
+# 	$(DATA_raw)/leases/leases_jb.Rds \
+# 	$(CDIR_functions)/match_addresses.R \
+# 	$(CDIR_functions)/utils.R
+# 	Rscript $<
 
 # ===========================================================================
 # Address/pre-checked matches as verification for name matches
@@ -98,7 +100,8 @@ $(DATA_rev)/modeled_matches.csv: \
 
 $(DATA_rev)/leases_matches.csv: \
 	$(CDIR_pre_screen)/pre_screen_leases_names.R \
-	$(DATA_raw)/leases/all_leases.Rds \
+	$(DATA_raw)/leases/leases_di.Rds \
+	$(DATA_raw)/leases/leases_jb.Rds \
 	$(DATA_gen)/matches/names/leases_name_matches.csv \
 	$(DATA_gen)/matches/addresses/leases_address_matches.csv \
 	$(CDIR_functions)/pre_screen_names.R \

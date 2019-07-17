@@ -2,7 +2,7 @@
 # Determines address matches for leases
 
 #===========
-# inputs: 
+# inputs:
 #===========
 # coded_addresses.csv
 # all_leases.Rds
@@ -32,24 +32,32 @@ source(file.path(root, 'code', 'functions', 'match_addresses.R'))
 # data read in
 #===========
 
-all_leases <- 
-	readRDS(file.path(rdir, 'leases', 'all_leases.Rds'))
-already_coded_addresses <- read_csv(file.path(ddir, 'address_backups', 
-	'coded_addresses.csv')) 
+leases_di <-
+	readRDS(file.path(rdir, 'leases', 'leases_di.Rds')) %>%
+	select(address = grnte_ad, name = grnte_al)
+
+leases_jb <-
+  readRDS(file.path(rdir, 'leases', 'leases_jb.Rds')) %>%
+	filter(LesseeAddr != "") %>%
+	mutate(address = str_to_upper(paste(LesseeAddr, LesseeCStZ)),
+		name = str_to_upper(Lessee)) %>%
+	select(name, address)
+
+already_coded_addresses <- read_csv(file.path(ddir, 'address_backups',
+	'coded_addresses.csv'))
 
 #===========
-# match addresses 
+# match addresses
 #===========
 
 already_coded_addresses <-  pull(already_coded_addresses, address)
 
 # all
-df <- 
-	all_leases %>% 
-	rename(address = grnte_ad, name = grnte_al) %>% 
-	select(name, address) 
+df <-
+	rbind(leases_di, leases_jb) %>%
+	distinct()
 
-output_file <- file.path(ddir, 'matches', 'addresses', 
+output_file <- file.path(ddir, 'matches', 'addresses',
 	'leases_address_matches.csv')
 
 match_addresses(df, already_coded_addresses, output_file)

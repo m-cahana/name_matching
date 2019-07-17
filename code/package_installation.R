@@ -1,11 +1,11 @@
 # Install necessary packages
-# data shaping packages: tidyverse, fst, stringi, tictoc, stringdist, text2vec, 
-# readxl, fuzzyjoin, data.table, sf, googleway, igraph, openxlsx, lubridate, 
+# data shaping packages: tidyverse, fst, stringi, tictoc, stringdist, text2vec,
+# readxl, fuzzyjoin, data.table, sf, googleway, igraph, openxlsx, lubridate,
 # e1071, rpart, randomForest
 
-packages <- c('tidyverse', 'fst', 'stringi', 'tictoc', 'stringdist', 'text2vec', 
-	'readxl', 'fuzzyjoin', 'data.table', 'sf', 'googleway', 'igraph', 
-	'openxlsx', 'lubridate', 'e1071', 'rpart', 'randomForest')
+packages <- c('tidyverse', 'fst', 'stringi', 'tictoc', 'stringdist', 'text2vec',
+	'readxl', 'fuzzyjoin', 'data.table', 'sf', 'googleway', 'igraph',
+	'openxlsx', 'lubridate', 'e1071', 'rpart', 'randomForest', 'Formula', 'grf')
 
 check_install <- function(pkg){
 	if(!(pkg %in% installed.packages())){
